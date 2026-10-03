@@ -28,8 +28,8 @@ class Scan:
     device: str
     started_at: str
     finished_at: str
-    started_monotonic_ns: int
-    finished_monotonic_ns: int
+    started_monotonic_ms: int
+    finished_monotonic_ms: int
     boot_id: str
     status: ScanStatus
     error: str | None = None

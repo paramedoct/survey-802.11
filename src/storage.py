@@ -7,16 +7,16 @@ from types import TracebackType
 
 from model import Scan
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 _SCHEMA = """
 CREATE TABLE scan (
     id INTEGER PRIMARY KEY,
     device TEXT NOT NULL,
     started_at TEXT NOT NULL,
     finished_at TEXT NOT NULL,
-    started_monotonic_ns INTEGER NOT NULL,
-    finished_monotonic_ns INTEGER NOT NULL
-        CHECK (finished_monotonic_ns >= started_monotonic_ns),
+    started_monotonic_ms INTEGER NOT NULL,
+    finished_monotonic_ms INTEGER NOT NULL
+        CHECK (finished_monotonic_ms >= started_monotonic_ms),
     boot_id TEXT NOT NULL,
     status TEXT NOT NULL
         CHECK (status IN ('success', 'failed', 'timeout', 'cancelled')),
@@ -36,9 +36,9 @@ CREATE TABLE observation (
     PRIMARY KEY (scan_id, bssid, frequency_mhz)
 );
 CREATE INDEX scan_time ON scan(started_at, id);
-CREATE INDEX scan_boot_time ON scan(boot_id, started_monotonic_ns, id);
+CREATE INDEX scan_boot_time ON scan(boot_id, started_monotonic_ms, id);
 CREATE INDEX observation_address_time ON observation(bssid, scan_id);
-PRAGMA user_version = 1;
+PRAGMA user_version = 2;
 """
 
 
@@ -50,7 +50,7 @@ def read_summary(path: Path) -> dict[str, object]:
         sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     ) as connection:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
-        if version != SCHEMA_VERSION:
+        if version not in {1, SCHEMA_VERSION}:
             raise RuntimeError(f"unsupported database schema version: {version}")
         counts = dict(
             connection.execute("SELECT status, count(*) FROM scan GROUP BY status")
@@ -84,7 +84,7 @@ class Storage:
         try:
             self.connection.execute("PRAGMA foreign_keys = ON")
             version = self.connection.execute("PRAGMA user_version").fetchone()[0]
-            if version not in {0, SCHEMA_VERSION}:
+            if version not in {0, 1, SCHEMA_VERSION}:
                 raise RuntimeError(f"unsupported database schema version: {version}")
             if version == 0:
                 tables = self.connection.execute(
@@ -100,6 +100,19 @@ class Storage:
                 self.connection.executescript(
                     "BEGIN IMMEDIATE;\n" + _SCHEMA + "COMMIT;"
                 )
+            elif version == 1:
+                self.connection.executescript(
+                    "BEGIN IMMEDIATE;\n"
+                    "ALTER TABLE scan RENAME COLUMN started_monotonic_ns "
+                    "TO started_monotonic_ms;\n"
+                    "ALTER TABLE scan RENAME COLUMN finished_monotonic_ns "
+                    "TO finished_monotonic_ms;\n"
+                    "UPDATE scan SET "
+                    "started_monotonic_ms = started_monotonic_ms / 1000000, "
+                    "finished_monotonic_ms = finished_monotonic_ms / 1000000;\n"
+                    "PRAGMA user_version = 2;\n"
+                    "COMMIT;"
+                )
         except BaseException:
             self.connection.close()
             raise
@@ -110,15 +123,15 @@ class Storage:
         with self.connection:
             cursor = self.connection.execute(
                 """INSERT INTO scan (
-                    device, started_at, finished_at, started_monotonic_ns,
-                    finished_monotonic_ns, boot_id, status, error
+                    device, started_at, finished_at, started_monotonic_ms,
+                    finished_monotonic_ms, boot_id, status, error
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
                 (
                     scan.device,
                     scan.started_at,
                     scan.finished_at,
-                    scan.started_monotonic_ns,
-                    scan.finished_monotonic_ns,
+                    scan.started_monotonic_ms,
+                    scan.finished_monotonic_ms,
                     scan.boot_id,
                     scan.status,
                     scan.error,

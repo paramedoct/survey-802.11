@@ -21,16 +21,16 @@ class FakeClock:
     def __init__(self) -> None:
         self.now = 0
 
-    def monotonic_ns(self) -> int:
+    def monotonic_ms(self) -> int:
         return self.now
 
     def timestamp(self) -> str:
         return (
-            datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=self.now / 1e9)
+            datetime(2026, 1, 1, tzinfo=UTC) + timedelta(seconds=self.now / 1e3)
         ).isoformat()
 
     def wait(self, stop: Event, seconds: float) -> None:
-        self.now += round(seconds * 1e9)
+        self.now += round(seconds * 1e3)
 
 
 class FakeScanner:
@@ -48,8 +48,8 @@ class FakeScanner:
 
     def scan(self, timeout_s: int, stop: Event) -> tuple[Observation, ...]:
         index = len(self.starts)
-        self.starts.append(self.clock.now // 1_000_000_000)
-        self.clock.now += self.durations[index] * 1_000_000_000
+        self.starts.append(self.clock.now // 1_000)
+        self.clock.now += self.durations[index] * 1_000
         if index == len(self.durations) - 1:
             stop.set()
         outcome = self.outcomes[index]
@@ -90,6 +90,14 @@ class RuntimeTests(unittest.TestCase):
             collector.run()
             self.assertTrue(scanner.prepared)
             self.assertEqual(scanner.starts, [0, 60, 240])
+            with closing(sqlite3.connect(root / "history.db")) as connection:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT started_monotonic_ms, finished_monotonic_ms "
+                        "FROM scan ORDER BY id"
+                    ).fetchall(),
+                    [(0, 5000), (60000, 190000), (240000, 242000)],
+                )
             state = json.loads((root / "status.json").read_text())
             self.assertEqual(state["skipped_periods"], 2)
             self.assertEqual(state["successful_scans"], 3)

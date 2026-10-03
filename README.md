@@ -174,13 +174,15 @@ already completed are committed before exit. Storage failures roll back the
 entire round, log an error, and terminate with a failure exit code so systemd
 can restart the collector.
 
-The database uses schema version 1 (`PRAGMA user_version`), foreign keys, WAL
-and `synchronous=FULL`. New databases are initialized transactionally, and
-unknown versions or populated unversioned databases are rejected.
+The database uses schema version 2 (`PRAGMA user_version`), foreign keys, WAL
+and `synchronous=FULL`. New databases are initialized transactionally.
+Version 1 databases are migrated transactionally at collector startup: monotonic
+values are divided by 1,000,000, discarding sub-millisecond precision. Unknown
+versions or populated unversioned databases are rejected.
 
 | Table | Fields |
 | --- | --- |
-| `scan` | `id`, `device`, `started_at`, `finished_at`, `started_monotonic_ns`, `finished_monotonic_ns`, `boot_id`, `status`, `error` |
+| `scan` | `id`, `device`, `started_at`, `finished_at`, `started_monotonic_ms`, `finished_monotonic_ms`, `boot_id`, `status`, `error` |
 | `observation` | `scan_id`, `bssid`, `frequency_mhz`, `ssid_bytes`, `ssid_display`, `signal_dbm`, `channel`, `security_json` |
 
 `BSSID` is the access point address (including inputs previously called
@@ -202,7 +204,7 @@ lists, security capabilities and WPS details when present. It does not infer
 missing security information.
 
 Wall-clock timestamps include the local timezone offset. The boot identifier
-and monotonic nanoseconds allow ordering across wall-clock corrections within
+and monotonic milliseconds allow ordering across wall-clock corrections within
 one boot. `scan.id` gives database insertion order across restarts and boots.
 Timestamp, boot/monotonic and address/round indexes support history queries.
 
@@ -224,7 +226,7 @@ sudo python3 -m sqlite3 /var/lib/survey-802.11/survey-802.11.db
 Signal and name history for one address, ordered by collection round:
 
 ```sql
-SELECT s.id, s.started_at, s.boot_id, s.started_monotonic_ns,
+SELECT s.id, s.started_at, s.boot_id, s.started_monotonic_ms,
        o.ssid_display, hex(o.ssid_bytes) AS ssid_hex,
        o.signal_dbm, o.frequency_mhz, o.channel
 FROM observation AS o

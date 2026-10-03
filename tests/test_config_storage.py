@@ -9,7 +9,7 @@ from pathlib import Path
 
 from config import AppConfig, ConfigError, load_config
 from model import Observation
-from storage import Storage
+from storage import Storage, read_summary
 from tests.helpers import sample_scan
 
 
@@ -87,6 +87,58 @@ class StorageTests(unittest.TestCase):
                     ).fetchall(),
                     [("success",), ("success",), ("failed",), ("success",)],
                 )
+
+    def test_migrate_nanoseconds_preserves_history_and_constraints(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "history.db"
+            observation = Observation("aa:bb:cc:dd:ee:ff", 2412)
+            with Storage(path) as storage:
+                storage.save(sample_scan(observation))
+                storage.connection.executescript(
+                    "ALTER TABLE scan RENAME COLUMN started_monotonic_ms "
+                    "TO started_monotonic_ns;"
+                    "ALTER TABLE scan RENAME COLUMN finished_monotonic_ms "
+                    "TO finished_monotonic_ns;"
+                    "UPDATE scan SET started_monotonic_ns = 1234567890, "
+                    "finished_monotonic_ns = 2345678901;"
+                    "PRAGMA user_version = 1;"
+                )
+            self.assertEqual(read_summary(path)["successful_scans"], 1)
+            for _ in range(2):
+                with Storage(path) as storage:
+                    self.assertEqual(
+                        storage.connection.execute("PRAGMA user_version").fetchone(),
+                        (2,),
+                    )
+                    self.assertEqual(
+                        storage.connection.execute(
+                            "SELECT id, started_monotonic_ms, finished_monotonic_ms "
+                            "FROM scan"
+                        ).fetchall(),
+                        [(1, 1234, 2345)],
+                    )
+                    self.assertEqual(
+                        storage.connection.execute(
+                            "SELECT scan_id, bssid FROM observation"
+                        ).fetchall(),
+                        [(1, observation.bssid)],
+                    )
+                    self.assertEqual(
+                        storage.connection.execute("PRAGMA integrity_check").fetchone(),
+                        ("ok",),
+                    )
+                    self.assertEqual(
+                        storage.connection.execute(
+                            "PRAGMA foreign_key_check"
+                        ).fetchall(),
+                        [],
+                    )
+                    with self.assertRaises(sqlite3.IntegrityError):
+                        storage.connection.execute(
+                            "UPDATE scan SET finished_monotonic_ms = 1233"
+                        )
+            with Storage(path) as storage:
+                self.assertEqual(storage.save(sample_scan(observation)), 2)
 
     def test_rollback_on_invalid_observation_and_disk_full(self) -> None:
         with (

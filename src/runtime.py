@@ -22,7 +22,7 @@ _LOG = logging.getLogger(__name__)
 
 
 class Clock(Protocol):
-    def monotonic_ns(self) -> int: ...
+    def monotonic_ms(self) -> int: ...
 
     def timestamp(self) -> str: ...
 
@@ -30,8 +30,8 @@ class Clock(Protocol):
 
 
 class SystemClock:
-    def monotonic_ns(self) -> int:
-        return time.monotonic_ns()
+    def monotonic_ms(self) -> int:
+        return time.monotonic_ns() // 1_000_000
 
     def timestamp(self) -> str:
         return datetime.now().astimezone().isoformat(timespec="microseconds")
@@ -105,7 +105,7 @@ class Collector:
 
     def _scan(self) -> Scan:
         started_at = self.clock.timestamp()
-        started_ns = self.clock.monotonic_ns()
+        started_ms = self.clock.monotonic_ms()
         status: ScanStatus = "success"
         error: str | None = None
         observations: tuple[Observation, ...] = ()
@@ -119,8 +119,8 @@ class Collector:
             self.config.device,
             started_at,
             self.clock.timestamp(),
-            started_ns,
-            self.clock.monotonic_ns(),
+            started_ms,
+            self.clock.monotonic_ms(),
             self.boot_id,
             status,
             error,
@@ -154,14 +154,12 @@ class Collector:
             self._publish()
             self.scanner.prepare(self.stop)
             with Storage(self.config.database_path) as storage:
-                interval_ns = self.config.interval_s * 1_000_000_000
-                deadline = self.clock.monotonic_ns()
+                interval_ms = self.config.interval_s * 1_000
+                deadline = self.clock.monotonic_ms()
                 while not self.stop.is_set():
                     self.clock.wait(
                         self.stop,
-                        max(
-                            0.0, (deadline - self.clock.monotonic_ns()) / 1_000_000_000
-                        ),
+                        max(0.0, (deadline - self.clock.monotonic_ms()) / 1_000),
                     )
                     if self.stop.is_set():
                         break
@@ -169,11 +167,11 @@ class Collector:
                     self._record_scan(scan)
                     scan_id = storage.save(scan)
                     self._record_commit(scan, scan_id)
-                    deadline += interval_ns
-                    now = self.clock.monotonic_ns()
+                    deadline += interval_ms
+                    now = self.clock.monotonic_ms()
                     if deadline < now:
-                        skipped = (now - deadline + interval_ns - 1) // interval_ns
-                        deadline += skipped * interval_ns
+                        skipped = (now - deadline + interval_ms - 1) // interval_ms
+                        deadline += skipped * interval_ms
                         self.skipped_periods += skipped
                     self._publish()
         except ScanError as error:
