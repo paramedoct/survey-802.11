@@ -14,7 +14,7 @@ from contextlib import closing
 from functools import partial
 from pathlib import Path
 
-from tests.test_installation import executable
+from tests.helpers import executable
 
 
 def wait_for(predicate: Callable[[], bool], process: subprocess.Popen[bytes]) -> None:

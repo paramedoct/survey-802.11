@@ -16,7 +16,7 @@ import reporting
 from config import AppConfig
 from model import Observation
 from storage import Storage, read_summary
-from tests.test_config_storage import sample_scan
+from tests.helpers import sample_scan
 
 
 class ReportingTests(unittest.TestCase):

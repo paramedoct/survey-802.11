@@ -8,21 +8,9 @@ from dataclasses import replace
 from pathlib import Path
 
 from config import AppConfig, ConfigError, load_config
-from model import Observation, Scan
+from model import Observation
 from storage import Storage
-
-
-def sample_scan(*observations: Observation) -> Scan:
-    return Scan(
-        "wlan0",
-        "2026-10-03T10:00:00+09:00",
-        "2026-10-03T10:00:01+09:00",
-        100,
-        200,
-        "test-boot",
-        "success",
-        observations=observations,
-    )
+from tests.helpers import sample_scan
 
 
 class ConfigTests(unittest.TestCase):

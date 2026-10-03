@@ -275,6 +275,15 @@ restored database.
 
 ## Development and verification
 
+The command entrypoint delegates diagnostics to `diagnostics` and status
+reporting to `reporting`. `runtime` coordinates scanning and database commits;
+`scanner` handles wireless commands and process cleanup, while `scan_parser`
+only interprets scan output. The existing scanner parsing imports and
+`runtime.write_status` remain available for compatibility.
+
+Tests are grouped by responsibility. Shared scan fixtures and executable-file
+helpers live in `tests/helpers.py`, so test modules do not import each other.
+
 ```bash
 python3 -m venv --system-site-packages .venv
 .venv/bin/python -m pip install -e '.[dev]'

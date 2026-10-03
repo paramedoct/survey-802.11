@@ -6,10 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
-def executable(path: Path, content: str) -> None:
-    path.write_text(content)
-    path.chmod(0o755)
+from tests.helpers import executable
 
 
 class InstallationTests(unittest.TestCase):
