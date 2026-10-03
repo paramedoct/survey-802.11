@@ -150,6 +150,7 @@ class _BSS:
             "pairwise_ciphers",
             "group_cipher",
             "group_mgmt_cipher",
+            "group_mgmt_cipher_suite",
         }:
             self.sections[self.section][key] = _SUITES.findall(content)
         elif key == "capabilities":

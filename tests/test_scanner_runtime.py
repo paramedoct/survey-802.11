@@ -74,6 +74,7 @@ class ParserTests(unittest.TestCase):
                 b"\t\t * Group cipher: CCMP\n"
                 b"\t\t * Pairwise ciphers: CCMP TKIP\n"
                 b"\t\t * Authentication suites: IEEE 802.1X PSK SAE\n"
+                b"\t\t * Group mgmt cipher suite: AES-128-CMAC\n"
                 b"\t\t * Capabilities: MFP-required MFP-capable (0x00c0)\n"
                 b"\tWPA:\t * Version: 1\n"
                 b"\t\t * Authentication suites: PSK\n"
@@ -88,6 +89,7 @@ class ParserTests(unittest.TestCase):
             security["rsn"]["authentication_suites"], ["IEEE 802.1X", "PSK", "SAE"]
         )
         self.assertEqual(security["rsn"]["pairwise_ciphers"], ["CCMP", "TKIP"])
+        self.assertEqual(security["rsn"]["group_mgmt_cipher_suite"], ["AES-128-CMAC"])
         self.assertIn("MFP-required", security["rsn"]["capabilities"])
         self.assertEqual(security["wpa"]["authentication_suites"], ["PSK"])
         self.assertNotIn("unrelated", security["wps"])
@@ -301,6 +303,8 @@ class RuntimeTests(unittest.TestCase):
             state = json.loads((root / "status.json").read_text())
             self.assertFalse(state["running"])
             self.assertIn("storage failure", state["last_error"])
+            self.assertIsNotNone(state["last_scan_at"])
+            self.assertEqual(state["last_scan_status"], "success")
             self.assertIsNone(state["last_commit_at"])
             with closing(sqlite3.connect(root / "history.db")) as connection:
                 self.assertEqual(

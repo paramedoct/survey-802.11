@@ -164,12 +164,12 @@ class Collector:
                     if self.stop.is_set():
                         break
                     scan = self._scan()
-                    scan_id = storage.save(scan)
-                    self.state["last_scan_id"] = scan_id
                     self.state["last_scan_at"] = scan.finished_at
-                    self.state["last_commit_at"] = self.clock.timestamp()
                     self.state["last_scan_status"] = scan.status
                     self.state["last_observation_count"] = len(scan.observations)
+                    scan_id = storage.save(scan)
+                    self.state["last_scan_id"] = scan_id
+                    self.state["last_commit_at"] = self.clock.timestamp()
                     if scan.status == "success":
                         self.successful_scans += 1
                     else:
