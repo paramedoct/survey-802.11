@@ -6,6 +6,12 @@ from typing import Literal
 ScanStatus = Literal["success", "failed", "timeout", "cancelled"]
 
 
+class ScanError(RuntimeError):
+    def __init__(self, message: str, status: ScanStatus = "failed") -> None:
+        super().__init__(message)
+        self.status = status
+
+
 @dataclass(frozen=True)
 class Observation:
     bssid: str
