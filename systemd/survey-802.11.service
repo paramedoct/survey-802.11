@@ -1,0 +1,39 @@
+[Unit]
+Description=Wireless access point time-series collector
+After=local-fs.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+ExecStart=/opt/survey-802.11/venv/bin/survey-802.11 collect
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+RuntimeDirectory=survey-802.11
+RuntimeDirectoryMode=0750
+StateDirectory=survey-802.11
+StateDirectoryMode=0750
+User=root
+Group=root
+UMask=0027
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_NETLINK AF_UNIX
+RestrictSUIDSGID=true
+LockPersonality=true
+ReadWritePaths=/var/lib/survey-802.11 /run/survey-802.11
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
