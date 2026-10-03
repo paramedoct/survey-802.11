@@ -19,7 +19,7 @@ all:
 	esac
 	for tool in python3 iw ip systemctl install; do
 	  if ! command -v "$$tool" >/dev/null 2>&1; then
-	    echo "$$tool is required; run make setup" >&2
+	    echo "$$tool is required; run ./3rdparty/setup-debian.sh" >&2
 	    exit 1
 	  fi
 	done
@@ -27,8 +27,8 @@ all:
 	  echo "Python 3.13 or newer is required" >&2
 	  exit 1
 	fi
-	if ! python3 -c 'import ensurepip, setuptools, wheel'; then
-	  echo "python3-venv, python3-setuptools and python3-wheel are required" >&2
+	if ! python3 -c 'import ensurepip, setuptools'; then
+	  echo "python3-venv and python3-setuptools are required" >&2
 	  exit 1
 	fi
 	was_active=false
@@ -75,9 +75,4 @@ clean:
 	echo "removed application; /etc/survey-802.11 and /var/lib/survey-802.11 were preserved"
 
 setup:
-	@if [ "$$(id -u)" -ne 0 ]; then
-	  exec sudo -- make --no-print-directory -C "$(ROOT_DIR)" setup
-	fi
-	apt-get update
-	apt-get install -y python3 python3-venv python3-pip python3-setuptools \
-	  python3-wheel iw iproute2 make
+	@"$(ROOT_DIR)/3rdparty/setup-debian.sh"

@@ -16,14 +16,17 @@ Requirements: Raspberry Pi OS Trixie, Python 3.13 or newer, and `make`.
 Run these commands from this repository:
 
 ```bash
-make setup
+./3rdparty/setup-debian.sh
 make
 sudo editor /etc/survey-802.11/survey-802.11.toml
 sudo survey-802.11 validate
 ```
 
-`make setup` installs Python, its virtual environment and build tools, `iw`,
-`iproute2`, and `make` using Debian packages. `make` installs the program into
+`3rdparty/setup-debian.sh` installs Python, its virtual environment and build
+tools, `iw`, `iproute2`, and `make` using Debian packages. `make setup` invokes
+the same script. Copyright notices are stored in `3rdparty/<dependency>/copyright`
+for Python, setuptools, make, iw and iproute2.
+`make` installs the program into
 `/opt/survey-802.11/venv`, links the command in `/usr/local/bin`, and installs
 `survey-802.11.service`. Installation uses local build dependencies without
 contacting a Python package index. Existing configuration is preserved.
@@ -36,8 +39,8 @@ and service while keeping configuration and recorded data:
 make clean
 ```
 
-Installation, removal and dependency installation request root access using
-`sudo` when needed. Their implementations are all in `makefile`.
+Installation and removal request root access using `sudo` when needed and are
+implemented in `makefile`. The Debian dependency installation script uses `sudo`.
 
 ## Prepare a dedicated scan interface
 
