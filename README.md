@@ -23,9 +23,9 @@ sudo survey-802.11 validate
 ```
 
 `3rdparty/setup-debian.sh` installs Python, its virtual environment and build
-tools, `iw`, `iproute2`, and `make` using Debian packages. `make setup` invokes
+tools, `iw`, `iproute2`, `lrzsz` (including `sz`), and `make` using Debian packages. `make setup` invokes
 the same script. Copyright notices are stored in `3rdparty/<dependency>/copyright`
-for Python, setuptools, make, iw and iproute2.
+for Python, setuptools, make, iw, iproute2 and lrzsz.
 `make` installs the program into
 `/opt/survey-802.11/venv`, links the command in `/usr/local/bin`, and installs
 `survey-802.11.service`. Installation uses local build dependencies without
