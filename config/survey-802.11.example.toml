@@ -1,0 +1,9 @@
+version = 1
+
+[collector]
+device = "wlan0"
+interval_s = 60
+timeout_s = 20
+
+[database]
+path = "/var/lib/survey-802.11/survey-802.11.db"
