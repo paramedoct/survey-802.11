@@ -46,6 +46,28 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(items[0].signal_dbm, -50.25)
         self.assertEqual([items[0].channel, items[-1].channel], [1, 6])
 
+    def test_frequency_with_zero_offset(self) -> None:
+        for frequency in (b"2412", b"2412.0", b"2412.000"):
+            with self.subTest(frequency=frequency):
+                item = parse_scan(bss().replace(b"2412", frequency))[0]
+                self.assertEqual(item.frequency_mhz, 2412)
+                self.assertEqual(item.channel, 1)
+
+    def test_invalid_frequency_skips_only_affected_access_point(self) -> None:
+        for frequency in (b"0", b"0.0", b"2412.1", b"2412.", b"2412 MHz", b"nan"):
+            invalid = bss().replace(b"2412", frequency)
+            valid = bss(b"aa:bb:cc:dd:ee:01")
+            for output in (invalid + valid, valid + invalid):
+                with (
+                    self.subTest(frequency=frequency, output=output),
+                    self.assertLogs("scan_parser", level="WARNING"),
+                ):
+                    items = parse_scan(output)
+                    self.assertEqual(len(items), 1)
+                    self.assertEqual(items[0].bssid, "aa:bb:cc:dd:ee:01")
+            with self.assertLogs("scan_parser", level="WARNING"):
+                self.assertEqual(parse_scan(invalid), ())
+
     def test_security_and_missing_optional_fields(self) -> None:
         minimal = parse_scan(b"BSS aa:bb:cc:dd:ee:ff\n\tfreq: 2484\n")[0]
         self.assertIsNone(minimal.ssid_bytes)
@@ -87,7 +109,6 @@ class ParserTests(unittest.TestCase):
             b"garbage",
             b"BSS invalid\n\tfreq: 2412\n",
             b"BSS aa:bb:cc:dd:ee:ff\n\tSSID: name\n",
-            bss() + b"\tfreq: nan\n",
             bss() + b"\tsignal: NaN dBm\n",
             bss(ssid=rb"broken\xzz"),
             bss(ssid=b"x" * 33),

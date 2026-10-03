@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
 from dataclasses import dataclass, field
 
 from model import Observation, ScanError
+
+_LOG = logging.getLogger(__name__)
 
 _BSSID = re.compile(
     rb"BSS ([0-9a-fA-F]{2}(?::[0-9a-fA-F]{2}){5})(?:\(on [^)]+\))?(?: -- .*)?"
@@ -52,6 +55,7 @@ def _ssid(value: bytes) -> bytes:
 class _BSS:
     bssid: str
     frequency: int | None = None
+    invalid_frequency: bool = False
     ssid: bytes | None = None
     signal_dbm: float | None = None
     privacy: bool | None = None
@@ -84,9 +88,14 @@ class _BSS:
             self.ssid = _ssid(value)
         elif value.startswith(b"freq:"):
             frequency = value[5:].strip()
-            if not re.fullmatch(rb"[0-9]+", frequency) or int(frequency) <= 0:
-                raise ScanError(f"invalid frequency for {self.bssid}")
-            self.frequency = int(frequency)
+            match = re.fullmatch(rb"([0-9]+)(?:\.0+)?", frequency)
+            if match is None or int(match[1]) <= 0:
+                self.invalid_frequency = True
+                _LOG.warning(
+                    "skipping BSS %s: invalid frequency %r", self.bssid, frequency
+                )
+                return
+            self.frequency = int(match[1])
         elif value.startswith(b"signal:"):
             strength = value[7:].strip()
             match = _SIGNAL.fullmatch(strength)
@@ -147,7 +156,7 @@ def parse_scan(output: bytes) -> tuple[Observation, ...]:
         if not line.strip():
             continue
         if line.startswith(b"BSS "):
-            if current is not None:
+            if current is not None and not current.invalid_frequency:
                 item = current.observation()
                 observations[item.bssid, item.frequency_mhz] = item
             match = _BSSID.fullmatch(line)
@@ -156,9 +165,9 @@ def parse_scan(output: bytes) -> tuple[Observation, ...]:
             current = _BSS(match[1].decode("ascii").lower())
         elif current is None or not line.startswith((b"\t", b" ")):
             raise ScanError("unexpected scan output")
-        else:
+        elif not current.invalid_frequency:
             current.parse_line(line)
-    if current is not None:
+    if current is not None and not current.invalid_frequency:
         item = current.observation()
         observations[item.bssid, item.frequency_mhz] = item
     return tuple(observations.values())

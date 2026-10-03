@@ -165,7 +165,8 @@ recording the scan cache; see the
 A single loop scans and commits sequentially using a monotonic schedule.
 Overdue periods are skipped instead of running catch-up scans.
 
-Scan command errors and malformed required fields produce `failed` rounds;
+An invalid frequency skips only the affected access point and logs a warning.
+Scan command errors and other malformed required fields produce `failed` rounds;
 timeouts produce `timeout` rounds. The next scheduled round retries normally.
 An empty successful scan remains `success` with no observations. On SIGINT or
 SIGTERM, the collector terminates and reaps the scan process group, saving a
