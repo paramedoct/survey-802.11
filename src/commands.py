@@ -13,6 +13,7 @@ from typing import cast
 import control
 from config import DEFAULT_CONFIG, DEFAULT_STATUS, ConfigError, load_config
 from diagnostics import diagnose
+from interface_control import prepare_interface, restore_interface
 from reporting import show_status
 from runtime import Collector, shutdown_signals
 from scanner import IwScanner
@@ -21,9 +22,10 @@ from scanner import IwScanner
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="survey-802.11")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for name in ("collect", "validate", "status", "diagnose"):
+    for name in ("collect", "validate", "status", "diagnose", "prepare-interface"):
         command = subparsers.add_parser(name)
         command.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    subparsers.add_parser("restore-interface")
     for name in ("start", "stop", "restart", "enable", "disable"):
         subparsers.add_parser(name)
     for name in ("collect", "status"):
@@ -44,7 +46,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             if arguments.command in {"start", "restart", "enable"}:
                 load_config(DEFAULT_CONFIG)
             return control.manage(cast(control.Action, arguments.command))
+        if arguments.command == "restore-interface":
+            restore_interface()
+            return 0
         config = load_config(arguments.config)
+        if arguments.command == "prepare-interface":
+            prepare_interface(config.device)
+            return 0
         if arguments.command == "validate":
             print(
                 f"configuration valid: device={config.device}, "

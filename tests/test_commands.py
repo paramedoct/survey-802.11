@@ -59,6 +59,21 @@ class CommandTests(unittest.TestCase):
         ):
             self.assertEqual(control.manage("stop"), 7)
 
+    def test_interface_hooks_and_restore_without_configuration(self) -> None:
+        with (
+            patch(
+                "commands.load_config", return_value=AppConfig(device="wlan1")
+            ) as load,
+            patch("commands.prepare_interface") as prepare,
+            patch("commands.restore_interface") as restore,
+        ):
+            self.assertEqual(commands.main(["prepare-interface"]), 0)
+            prepare.assert_called_once_with("wlan1")
+            load.reset_mock()
+            self.assertEqual(commands.main(["restore-interface"]), 0)
+            load.assert_not_called()
+            restore.assert_called_once_with()
+
     def test_collect_storage_failure_returns_nonzero(self) -> None:
         output = io.StringIO()
         with (

@@ -57,40 +57,47 @@ iw reg get
 ls /sys/class/net/wlan0/phy80211/rfkill*/
 ```
 
-Add `/etc/NetworkManager/conf.d/90-survey-802.11.conf` with this content:
+The service automatically reserves the configured interface at startup with
+`nmcli device set DEVICE managed no`. It first records whether NetworkManager
+was managing the interface. After collection stops, it restores management only
+if the interface was originally managed. NetworkManager then applies its normal
+autoconnection policy; the collector does not explicitly activate a connection.
+An interface that was already unmanaged remains unmanaged.
 
-```ini
-[keyfile]
-unmanaged-devices=interface-name:wlan0
-```
+No permanent NetworkManager configuration is required. If you previously added
+`wlan0` to `/etc/NetworkManager/conf.d/90-survey-802.11.conf`, remove that entry
+and run `sudo nmcli general reload` before relying on automatic restoration.
+Existing permanent exclusions are respected. Other connection managers and
+`wpa_supplicant` instances must not manage the scan interface.
 
-If a deployment already has an `unmanaged-devices` list, merge this interface
-into that list. NetworkManager supports configuration fragments and interface
-matching through this setting; see its
-[configuration reference](https://networkmanager.dev/docs/api/latest/NetworkManager.conf.html).
-Reload it and confirm that the interface is unmanaged and disconnected:
+The lifecycle hooks apply to `start`, `stop`, `restart`, `enable`, `disable`,
+direct systemd management and automatic startup. They restore management after
+startup failures and collector crashes as well. Recovery state is kept in
+`/run/survey-802.11/interface-state.json`; failed restoration keeps the state
+for a retry before the next startup. The runtime directory survives service
+stops, but is cleared on reboot. If nmcli is absent or NetworkManager is not
+running, the hooks leave interface management unchanged. Other nmcli errors
+prevent collection from starting.
+
+The collector raises the interface with `ip link set dev DEVICE up`; it does
+not change radio blocks, country settings or connection profiles. Resolve any
+block through the operating system before collection.
+
+To diagnose before first collection, temporarily reserve the interface and
+restore it afterward. These helper commands require root access and must only
+be used while the collector is stopped:
 
 ```bash
-sudo nmcli general reload
-sudo nmcli device set wlan0 managed no
-nmcli device status
-iw dev wlan0 link
-```
-
-The expected link result is `Not connected.`. Ensure no other connection
-manager or `wpa_supplicant` instance manages this interface. The collector
-raises the interface at startup with `ip link set dev wlan0 up`; it does not
-modify NetworkManager settings, connection profiles, radio blocks or country
-settings. Resolve any block through the operating system before collection.
-
-With the device prepared, diagnose it while collection is stopped, then enable
-immediate collection and automatic startup on boot:
-
-```bash
+sudo survey-802.11 stop
+sudo survey-802.11 prepare-interface
 sudo survey-802.11 diagnose
+sudo survey-802.11 restore-interface
 sudo survey-802.11 enable
 sudo survey-802.11 status
 ```
+
+Foreground `collect` does not invoke the service hooks; prepare and restore the
+interface manually when using that command.
 
 ## Configuration and commands
 
@@ -132,7 +139,9 @@ collector before diagnosing to avoid overlapping radio operations.
 
 ```bash
 sudo survey-802.11 stop
+sudo survey-802.11 prepare-interface
 sudo survey-802.11 diagnose
+sudo survey-802.11 restore-interface
 sudo survey-802.11 start
 sudo survey-802.11 status --json
 sudo journalctl -u survey-802.11.service -n 30 --no-pager
@@ -318,12 +327,14 @@ SURVEY_TEST_COMMAND="$PWD/.venv/bin/survey-802.11" PYTHONPATH=src \
 
 Before production use, verify these steps on the actual Raspberry Pi:
 
-1. Keep `wlan0` unmanaged and disconnected, and run `diagnose` successfully.
+1. Run `prepare-interface`, confirm `wlan0` is unmanaged and disconnected,
+   run `diagnose` successfully, and run `restore-interface`.
 2. Enable collection and confirm several 60-second rounds, including empty
    successes if no access points are visible, using status and database queries.
 3. Restart the service and confirm that round identifiers and history accumulate.
 4. Reboot and confirm the enabled service runs, with a new boot identifier.
-5. Stop during a scan and confirm the scan child exits and SQLite integrity
+5. Stop during a scan and confirm the original NetworkManager management state
+   is restored, the scan child exits and SQLite integrity
    checks succeed. Confirm journald has no storage errors.
 
 These hardware checks require the intended radio, firmware, country settings

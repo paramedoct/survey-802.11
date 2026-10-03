@@ -1,17 +1,20 @@
 [Unit]
 Description=Wireless access point time-series collector
-After=local-fs.target
+After=local-fs.target NetworkManager.service
 StartLimitIntervalSec=60
 StartLimitBurst=5
 
 [Service]
 Type=simple
+ExecStartPre=/opt/survey-802.11/venv/bin/survey-802.11 prepare-interface
 ExecStart=/opt/survey-802.11/venv/bin/survey-802.11 collect
+ExecStopPost=/opt/survey-802.11/venv/bin/survey-802.11 restore-interface
 Restart=on-failure
 RestartSec=5
 TimeoutStopSec=10
 RuntimeDirectory=survey-802.11
 RuntimeDirectoryMode=0750
+RuntimeDirectoryPreserve=yes
 StateDirectory=survey-802.11
 StateDirectoryMode=0750
 User=root

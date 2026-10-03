@@ -99,6 +99,10 @@ fi
             "User=root",
             "ReadWritePaths=/var/lib/survey-802.11 /run/survey-802.11",
             "Restart=on-failure",
+            "After=local-fs.target NetworkManager.service",
+            "ExecStartPre=/opt/survey-802.11/venv/bin/survey-802.11 prepare-interface",
+            "ExecStopPost=/opt/survey-802.11/venv/bin/survey-802.11 restore-interface",
+            "RuntimeDirectoryPreserve=yes",
         ):
             self.assertIn(directive, service)
 
