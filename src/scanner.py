@@ -209,6 +209,7 @@ def run_command(arguments: list[str], timeout_s: int, stop: Event) -> bytes:
     except OSError as error:
         raise ScanError(f"cannot execute {arguments[0]}: {error}") from error
     deadline = time.monotonic() + timeout_s
+    drained = False
     try:
         while True:
             if process.poll() is None:
@@ -222,7 +223,14 @@ def run_command(arguments: list[str], timeout_s: int, stop: Event) -> bytes:
             try:
                 stdout, stderr = process.communicate(timeout=min(remaining, 0.2))
             except subprocess.TimeoutExpired:
+                if stop.is_set():
+                    raise ScanError("scan cancelled", "cancelled") from None
+                if time.monotonic() >= deadline:
+                    raise ScanError(
+                        f"scan timed out after {timeout_s}s", "timeout"
+                    ) from None
                 continue
+            drained = True
             if process.returncode:
                 detail = stderr.decode("utf-8", errors="replace").strip()[:4096]
                 raise ScanError(f"{arguments[0]} exited {process.returncode}: {detail}")
@@ -230,7 +238,7 @@ def run_command(arguments: list[str], timeout_s: int, stop: Event) -> bytes:
                 raise ScanError(stderr.decode("utf-8", errors="replace").strip()[:4096])
             return stdout
     finally:
-        if process.poll() is None:
+        if not drained:
             _terminate(process)
         else:
             process.communicate()

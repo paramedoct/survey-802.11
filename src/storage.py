@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 from types import TracebackType
 
@@ -39,6 +40,41 @@ CREATE INDEX scan_boot_time ON scan(boot_id, started_monotonic_ns, id);
 CREATE INDEX observation_address_time ON observation(bssid, scan_id);
 PRAGMA user_version = 1;
 """
+
+
+def read_summary(path: Path) -> dict[str, object]:
+    """Read durable history without creating a missing database."""
+    if not path.exists():
+        return {"available": False}
+    with closing(
+        sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
+    ) as connection:
+        version = connection.execute("PRAGMA user_version").fetchone()[0]
+        if version != SCHEMA_VERSION:
+            raise RuntimeError(f"unsupported database schema version: {version}")
+        counts = dict(
+            connection.execute("SELECT status, count(*) FROM scan GROUP BY status")
+        )
+        last = connection.execute(
+            "SELECT id, finished_at, status FROM scan ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        error = connection.execute(
+            "SELECT finished_at, error FROM scan WHERE error IS NOT NULL "
+            "ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+    return {
+        "available": True,
+        "successful_scans": counts.get("success", 0),
+        "failed_scans": sum(
+            counts.get(status, 0) for status in ("failed", "timeout", "cancelled")
+        ),
+        "counts_by_status": counts,
+        "last_scan_id": last[0] if last else None,
+        "last_scan_at": last[1] if last else None,
+        "last_scan_status": last[2] if last else None,
+        "last_error_at": error[0] if error else None,
+        "last_error": error[1] if error else None,
+    }
 
 
 class Storage:
