@@ -214,10 +214,63 @@ class RuntimeTests(unittest.TestCase):
             self.assertIsNotNone(state["last_scan_at"])
             self.assertEqual(state["last_scan_status"], "success")
             self.assertIsNone(state["last_commit_at"])
+            self.assertIsNone(state["last_scan_id"])
+            self.assertEqual(state["successful_scans"], 0)
+            self.assertEqual(state["failed_scans"], 0)
             with closing(sqlite3.connect(root / "history.db")) as connection:
                 self.assertEqual(
                     connection.execute("SELECT count(*) FROM scan").fetchone()[0], 0
                 )
+
+    def test_later_storage_error_preserves_previous_commit(self) -> None:
+        for outcome in ("success", "failed", "timeout", "cancelled"):
+            with (
+                self.subTest(outcome=outcome),
+                simulated_collector([1, 1], ["success", outcome]) as (
+                    collector,
+                    _,
+                    root,
+                ),
+            ):
+                with Storage(root / "history.db") as storage:
+                    storage.connection.execute(
+                        "CREATE TRIGGER fail BEFORE INSERT ON scan "
+                        "WHEN EXISTS (SELECT 1 FROM scan) "
+                        "BEGIN SELECT RAISE(ABORT, 'storage failure'); END"
+                    )
+                with (
+                    self.assertLogs("runtime", level="WARNING"),
+                    self.assertRaises(sqlite3.IntegrityError),
+                ):
+                    collector.run()
+                state = json.loads((root / "status.json").read_text())
+                self.assertFalse(state["running"])
+                self.assertEqual(state["last_scan_status"], outcome)
+                self.assertEqual(state["last_scan_at"], "2026-01-01T00:01:01+00:00")
+                self.assertEqual(state["last_commit_at"], "2026-01-01T00:00:01+00:00")
+                self.assertEqual(state["last_scan_id"], 1)
+                self.assertEqual(state["successful_scans"], 1)
+                self.assertEqual(state["failed_scans"], 0)
+                self.assertEqual(state["last_error"], "storage failure")
+                with closing(sqlite3.connect(root / "history.db")) as connection:
+                    self.assertEqual(
+                        connection.execute("SELECT id, status FROM scan").fetchall(),
+                        [(1, "success")],
+                    )
+
+    def test_stop_before_first_scan_preserves_unset_status_fields(self) -> None:
+        with simulated_collector([], []) as (collector, scanner, root):
+            collector.stop.set()
+            collector.run()
+            self.assertEqual(scanner.starts, [])
+            state = json.loads((root / "status.json").read_text())
+            self.assertFalse(state["running"])
+            self.assertEqual(state["successful_scans"], 0)
+            self.assertEqual(state["failed_scans"], 0)
+            for key in ("last_scan_id", "last_scan_at", "last_commit_at"):
+                self.assertIsNone(state[key])
+            self.assertNotIn("last_scan_status", state)
+            self.assertNotIn("last_observation_count", state)
 
     def test_signal_restoration(self) -> None:
         previous = signal.getsignal(signal.SIGTERM)

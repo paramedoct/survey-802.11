@@ -127,6 +127,28 @@ class Collector:
             observations,
         )
 
+    def _record_scan(self, scan: Scan) -> None:
+        self.state["last_scan_at"] = scan.finished_at
+        self.state["last_scan_status"] = scan.status
+        self.state["last_observation_count"] = len(scan.observations)
+
+    def _record_commit(self, scan: Scan, scan_id: int) -> None:
+        self.state["last_scan_id"] = scan_id
+        self.state["last_commit_at"] = self.clock.timestamp()
+        if scan.status == "success":
+            self.successful_scans += 1
+        else:
+            self.failed_scans += 1
+        if scan.error is not None:
+            self.state["last_error"] = scan.error
+            self.state["last_error_at"] = scan.finished_at
+        _LOG.info(
+            "saved scan %s: %s, %s observations",
+            scan_id,
+            scan.status,
+            len(scan.observations),
+        )
+
     def run(self) -> None:
         try:
             self._publish()
@@ -144,25 +166,9 @@ class Collector:
                     if self.stop.is_set():
                         break
                     scan = self._scan()
-                    self.state["last_scan_at"] = scan.finished_at
-                    self.state["last_scan_status"] = scan.status
-                    self.state["last_observation_count"] = len(scan.observations)
+                    self._record_scan(scan)
                     scan_id = storage.save(scan)
-                    self.state["last_scan_id"] = scan_id
-                    self.state["last_commit_at"] = self.clock.timestamp()
-                    if scan.status == "success":
-                        self.successful_scans += 1
-                    else:
-                        self.failed_scans += 1
-                    if scan.error is not None:
-                        self.state["last_error"] = scan.error
-                        self.state["last_error_at"] = scan.finished_at
-                    _LOG.info(
-                        "saved scan %s: %s, %s observations",
-                        scan_id,
-                        scan.status,
-                        len(scan.observations),
-                    )
+                    self._record_commit(scan, scan_id)
                     deadline += interval_ns
                     now = self.clock.monotonic_ns()
                     if deadline < now:
