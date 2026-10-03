@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import json
 import logging
 import os
 import signal
-import tempfile
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -15,8 +13,9 @@ from types import FrameType
 from typing import Protocol
 
 from config import AppConfig
-from model import Observation, Scan, ScanStatus
-from scanner import ScanError, Scanner
+from model import Observation, Scan, ScanError, ScanStatus
+from reporting import write_status as write_status
+from scanner import Scanner
 from storage import Storage
 
 _LOG = logging.getLogger(__name__)
@@ -39,25 +38,6 @@ class SystemClock:
 
     def wait(self, stop: Event, seconds: float) -> None:
         stop.wait(seconds)
-
-
-def write_status(path: Path, payload: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    temporary: Path | None = None
-    try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", encoding="utf-8", dir=path.parent, prefix=".status-", delete=False
-        ) as stream:
-            temporary = Path(stream.name)
-            json.dump(payload, stream, sort_keys=True)
-            stream.write("\n")
-            stream.flush()
-            os.fsync(stream.fileno())
-            os.fchmod(stream.fileno(), 0o640)
-        os.replace(temporary, path)
-    finally:
-        if temporary is not None:
-            temporary.unlink(missing_ok=True)
 
 
 @contextmanager

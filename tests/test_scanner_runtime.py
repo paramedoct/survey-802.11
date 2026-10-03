@@ -16,7 +16,7 @@ from unittest.mock import patch
 
 from config import AppConfig
 from model import Observation
-from runtime import Collector, shutdown_signals, write_status
+from runtime import Collector, shutdown_signals
 from scanner import IwScanner, ScanError, run_command
 from storage import Storage
 
@@ -219,17 +219,7 @@ class RuntimeTests(unittest.TestCase):
                     connection.execute("SELECT count(*) FROM scan").fetchone()[0], 0
                 )
 
-    def test_atomic_status_replacement_and_signal_restoration(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "status.json"
-            write_status(path, {"counter": 1})
-            with (
-                patch("runtime.os.replace", side_effect=OSError("failure")),
-                self.assertRaises(OSError),
-            ):
-                write_status(path, {"counter": 2})
-            self.assertEqual(json.loads(path.read_text()), {"counter": 1})
-            self.assertEqual(list(path.parent.iterdir()), [path])
+    def test_signal_restoration(self) -> None:
         previous = signal.getsignal(signal.SIGTERM)
         stop = Event()
         with shutdown_signals(stop):

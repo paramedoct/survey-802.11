@@ -14,7 +14,6 @@ _SIGNAL = re.compile(rb"(-?\d+)\.(-?\d+) dBm")
 _SUITES = re.compile(r"(?:FT/)?IEEE 802\.1X(?:/[^ ]+)?|Use group cipher suite|[^ ]+")
 
 
-
 def channel_for_frequency(frequency: int) -> int | None:
     if frequency == 2484:
         return 14
@@ -163,4 +162,3 @@ def parse_scan(output: bytes) -> tuple[Observation, ...]:
         item = current.observation()
         observations[item.bssid, item.frequency_mhz] = item
     return tuple(observations.values())
-

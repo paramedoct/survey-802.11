@@ -20,7 +20,6 @@ class Scanner(Protocol):
     def scan(self, timeout_s: int, stop: Event) -> tuple[Observation, ...]: ...
 
 
-
 def _terminate(process: subprocess.Popen[bytes]) -> None:
     with suppress(ProcessLookupError):
         os.killpg(process.pid, signal.SIGTERM)
