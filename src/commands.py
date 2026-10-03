@@ -11,6 +11,7 @@ from threading import Event
 from typing import cast
 
 import control
+from backup import send_backup
 from config import DEFAULT_CONFIG, DEFAULT_STATUS, ConfigError, load_config
 from diagnostics import diagnose
 from interface_control import prepare_interface, restore_interface
@@ -22,7 +23,14 @@ from scanner import IwScanner
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="survey-802.11")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    for name in ("collect", "validate", "status", "diagnose", "prepare-interface"):
+    for name in (
+        "collect",
+        "validate",
+        "status",
+        "diagnose",
+        "prepare-interface",
+        "backup",
+    ):
         command = subparsers.add_parser(name)
         command.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     subparsers.add_parser("restore-interface")
@@ -50,6 +58,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             restore_interface()
             return 0
         config = load_config(arguments.config)
+        if arguments.command == "backup":
+            return send_backup(config.database_path)
         if arguments.command == "prepare-interface":
             prepare_interface(config.device)
             return 0

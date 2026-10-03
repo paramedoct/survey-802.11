@@ -74,6 +74,15 @@ class CommandTests(unittest.TestCase):
             load.assert_not_called()
             restore.assert_called_once_with()
 
+    def test_backup_uses_configured_database_and_returns_transfer_status(self) -> None:
+        with (
+            patch("commands.load_config", return_value=AppConfig()) as load,
+            patch("commands.send_backup", return_value=7) as backup,
+        ):
+            self.assertEqual(commands.main(["backup", "--config", "/custom.toml"]), 7)
+            self.assertEqual(str(load.call_args.args[0]), "/custom.toml")
+            backup.assert_called_once_with(AppConfig().database_path)
+
     def test_collect_storage_failure_returns_nonzero(self) -> None:
         output = io.StringIO()
         with (

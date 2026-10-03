@@ -107,7 +107,7 @@ fi
             self.assertIn(directive, service)
 
     def test_make_dry_runs_and_invalid_target(self) -> None:
-        for target in ([], ["clean"]):
+        for target in ([], ["clean"], ["backup"]):
             result = subprocess.run(
                 ["make", "--dry-run", *target],
                 capture_output=True,

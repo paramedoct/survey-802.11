@@ -126,11 +126,12 @@ restart.
 | `collect` | Collect in the foreground until SIGINT or SIGTERM |
 | `validate` | Validate configuration without accessing wireless hardware |
 | `status` | Show service state, runtime state, durable history, file sizes and free space |
+| `backup` | Create a consistent database snapshot and send it with `sz` |
 | `diagnose` | Check tools, root access, device, rfkill, storage and an actual active scan |
 | `start` / `stop` / `restart` | Manage the systemd service |
 | `enable` / `disable` | Enable and start, or disable and stop, the service |
 
-`collect`, `validate`, `status` and `diagnose` accept `--config PATH`.
+`collect`, `validate`, `status`, `diagnose` and `backup` accept `--config PATH`.
 `collect` and `status` also accept `--status-path PATH`. `status --json` provides
 structured output. Service management always uses the installed configuration
 and requires root access; starting, restarting and enabling validate it first.
@@ -261,23 +262,26 @@ replace the subquery with its integer identifier.
 
 ## Backup
 
-Stop collection before backing up. Use SQLite's backup API to include any
-remaining WAL contents in one consistent destination database. Choose an
-existing destination directory and a new backup filename:
+Run from the repository in a terminal that supports ZMODEM reception:
 
 ```bash
-sudo survey-802.11 stop
-sudo python3 - <<'PY'
-import sqlite3
-from contextlib import closing
-from pathlib import Path
+make backup
+```
 
-source = Path('/var/lib/survey-802.11/survey-802.11.db')
-with closing(sqlite3.connect(source.as_uri() + '?mode=ro', uri=True)) as reader:
-    with closing(sqlite3.connect('/path/to/backup/survey-802.11.db')) as writer:
-        reader.backup(writer)
-PY
-sudo survey-802.11 start
+The target invokes the installed command, requesting root access with `sudo`
+when needed. The source database path is read from the installed configuration
+(`/var/lib/survey-802.11/survey-802.11.db` by default). Collection can continue:
+SQLite's online backup API creates a consistent temporary database including
+committed WAL contents, then `sz SNAPSHOT_PATH` transfers that snapshot. The
+received file keeps the source database's filename. The temporary snapshot is
+removed after transfer succeeds or fails, and transfer failures return a
+nonzero exit code. The command never sends the live database file directly.
+See the [SQLite online backup documentation](https://www.sqlite.org/backup.html).
+
+The installed command also supports a custom configuration:
+
+```bash
+sudo survey-802.11 backup --config /path/to/config.toml
 ```
 
 To restore, stop collection, preserve the existing database and any `-wal` or
@@ -306,6 +310,7 @@ PYTHONPATH=src .venv/bin/python -m unittest discover -v
 make --dry-run
 make --dry-run clean
 make --dry-run setup
+make --dry-run backup
 ```
 
 Unit and integration tests cover parsing, hidden and non-UTF-8 names, security,
