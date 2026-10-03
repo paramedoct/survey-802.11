@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
 
@@ -122,11 +123,11 @@ class StorageTests(unittest.TestCase):
     def test_reject_unknown_schema_and_partial_results(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "history.db"
-            with sqlite3.connect(path) as connection:
+            with closing(sqlite3.connect(path)) as connection:
                 connection.execute("PRAGMA user_version = 99")
             with self.assertRaisesRegex(RuntimeError, "version"):
                 Storage(path)
-            with sqlite3.connect(path) as connection:
+            with closing(sqlite3.connect(path)) as connection:
                 connection.execute("PRAGMA user_version = 0")
                 connection.execute("CREATE TABLE unrelated (id INTEGER)")
             with self.assertRaisesRegex(RuntimeError, "unversioned"):
