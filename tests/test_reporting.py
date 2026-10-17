@@ -36,6 +36,21 @@ class ReportingTests(unittest.TestCase):
                 },
                 "total_size_bytes": 0,
                 "disk_free_bytes": 123,
+                "capacity": {
+                    "logical_database_bytes": None,
+                    "retained_observations": None,
+                    "first_observation_at": None,
+                    "last_observation_at": None,
+                    "retention_unknown_reason": (
+                        "matching collector measurements unavailable"
+                    ),
+                    "growth_bytes_per_day": None,
+                    "estimated_days_remaining": None,
+                    "estimate_status": "unknown",
+                    "estimate_unknown_reason": (
+                        "matching collector measurements unavailable"
+                    ),
+                },
             }
             expected = {
                 "service": {"ActiveState": "inactive"},
@@ -71,7 +86,8 @@ class ReportingTests(unittest.TestCase):
                         f"storage:\n  path: {database}\n"
                         "  file_sizes_bytes: {'history.db': 0, 'history.db-wal': 0, "
                         "'history.db-shm': 0}\n"
-                        "  total_size_bytes: 0\n  disk_free_bytes: 123\n",
+                        "  total_size_bytes: 0\n  disk_free_bytes: 123\n"
+                        f"  capacity: {storage['capacity']}\n",
                     )
             self.assertFalse(database.exists())
 

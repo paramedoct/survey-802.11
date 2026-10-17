@@ -17,6 +17,7 @@ from model import Observation, Scan, ScanError, ScanStatus
 from reporting import write_status as write_status
 from scanner import Scanner
 from storage import Storage
+from storage_metrics import StorageMetrics
 
 _LOG = logging.getLogger(__name__)
 
@@ -154,6 +155,15 @@ class Collector:
             self._publish()
             self.scanner.prepare(self.stop)
             with Storage(self.config.database_path) as storage:
+                metrics = StorageMetrics(
+                    storage.connection,
+                    self.config.database_path,
+                    self.clock.monotonic_ms(),
+                    max_gap_ms=max(
+                        180, self.config.interval_s * 2 + self.config.timeout_s
+                    )
+                    * 1000,
+                )
                 interval_ms = self.config.interval_s * 1_000
                 deadline = self.clock.monotonic_ms()
                 while not self.stop.is_set():
@@ -167,6 +177,16 @@ class Collector:
                     self._record_scan(scan)
                     scan_id = storage.save(scan)
                     self._record_commit(scan, scan_id)
+                    self.state["storage_metrics"] = metrics.record(
+                        storage.connection,
+                        monotonic_ms=self.clock.monotonic_ms(),
+                        observation_count=len(scan.observations),
+                        started_at=scan.started_at,
+                        scan_id=scan_id,
+                        successful_scans=self.successful_scans,
+                        failed_scans=self.failed_scans,
+                        success=scan.status == "success",
+                    )
                     deadline += interval_ms
                     now = self.clock.monotonic_ms()
                     if deadline < now:

@@ -136,7 +136,7 @@ class RuntimeTests(unittest.TestCase):
         with simulated_collector([1], ["success"]) as (collector, _, root):
             with Storage(root / "history.db") as storage:
                 storage.connection.execute(
-                    "CREATE TRIGGER fail BEFORE INSERT ON observation "
+                    "CREATE TRIGGER fail BEFORE INSERT ON observation_record "
                     "BEGIN SELECT RAISE(ABORT, 'storage failure'); END"
                 )
             with (

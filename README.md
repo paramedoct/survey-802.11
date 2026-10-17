@@ -139,6 +139,11 @@ and requires root access; starting, restarting and enabling validate it first.
 Diagnostic scans raise the interface and discard their results. Stop the
 collector before diagnosing to avoid overlapping radio operations.
 
+`status` reports retained observation counts and first/last observation times.
+It estimates remaining storage time only when recent committed data supports a
+stable growth estimate. See [storage monitoring](docs/storage-monitoring.md)
+for the fields and estimate limits.
+
 ```bash
 sudo survey-802.11 stop
 sudo survey-802.11 prepare-interface
