@@ -13,7 +13,7 @@ from typing import cast
 
 import control
 from config import AppConfig
-from storage import read_summary
+from history import summarize
 from storage_metrics import database_identity, logical_size
 
 
@@ -128,6 +128,56 @@ def _growth_status(
 
 def _disk_status(config: AppConfig, runtime: dict[str, object]) -> dict[str, object]:
     path = config.database_path
+    if config.database_layout == "monthly":
+        files = sorted(path.glob("*.db")) if path.is_dir() else []
+        files.extend(
+            sidecar
+            for database in list(files)
+            for sidecar in (Path(str(database) + "-wal"), Path(str(database) + "-shm"))
+        )
+        if path.is_dir() and (path / "manifest.json").exists():
+            files.append(path / "manifest.json")
+        sizes = {file.name: file.stat().st_size for file in files if file.exists()}
+        free_bytes = shutil.disk_usage(
+            path if path.is_dir() else existing_parent(path)
+        ).free
+        history = summarize(path, "monthly") if path.is_dir() else {"available": False}
+        metrics = runtime.get("storage_metrics")
+        metrics = cast(dict[str, object], metrics) if isinstance(metrics, dict) else {}
+        valid = (
+            runtime.get("database_layout") == "monthly"
+            and metrics.get("collection_id") == history.get("collection_id")
+            and metrics.get("last_scan_id") == history.get("last_scan_id")
+        )
+        capacity: dict[str, object] = {
+            "logical_database_bytes": history.get("logical_database_bytes"),
+            "retained_observations": metrics.get("retained_observations")
+            if valid
+            else None,
+            "first_observation_at": metrics.get("first_observation_at")
+            if valid
+            else None,
+            "last_observation_at": metrics.get("last_observation_at")
+            if valid
+            else None,
+            "growth_bytes_per_day": None,
+            "estimated_days_remaining": None,
+            "estimate_status": "unknown",
+            "estimate_unknown_reason": "monthly growth estimator unavailable",
+        }
+        if not valid:
+            capacity["retention_unknown_reason"] = (
+                "matching collector measurements unavailable"
+            )
+        else:
+            capacity["retention_unknown_reason"] = None
+        return {
+            "path": str(path),
+            "file_sizes_bytes": sizes,
+            "total_size_bytes": sum(sizes.values()),
+            "disk_free_bytes": free_bytes,
+            "capacity": capacity,
+        }
     files = [path, Path(str(path) + "-wal"), Path(str(path) + "-shm")]
     sizes = {file.name: file.stat().st_size if file.exists() else 0 for file in files}
     free_bytes = shutil.disk_usage(existing_parent(path)).free
@@ -153,7 +203,7 @@ def show_status(config: AppConfig, status_path: Path, as_json: bool) -> int:
     payload: dict[str, dict[str, object]] = {
         "service": dict(control.service_status()),
         "runtime": runtime,
-        "history": read_summary(config.database_path),
+        "history": summarize(config.database_path, config.database_layout),
         "storage": _disk_status(config, runtime),
     }
     if as_json:

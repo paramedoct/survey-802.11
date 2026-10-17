@@ -239,31 +239,35 @@ class Storage:
             self._lock.close()
             raise
 
-    def save(self, scan: Scan) -> int:
+    def save(self, scan: Scan, *, scan_id: int | None = None) -> int:
         if scan.status != "success" and scan.observations:
             raise ValueError("incomplete scans cannot contain observations")
         with self.connection:
-            cursor = self.connection.execute(
-                """INSERT INTO scan (
-                    device, started_at, finished_at, started_monotonic_ms,
-                    finished_monotonic_ms, boot_id, status, error
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    scan.device,
-                    scan.started_at,
-                    scan.finished_at,
-                    scan.started_monotonic_ms,
-                    scan.finished_monotonic_ms,
-                    scan.boot_id,
-                    scan.status,
-                    scan.error,
-                ),
+            columns = """device, started_at, finished_at, started_monotonic_ms,
+                finished_monotonic_ms, boot_id, status, error"""
+            values: tuple[object, ...] = (
+                scan.device,
+                scan.started_at,
+                scan.finished_at,
+                scan.started_monotonic_ms,
+                scan.finished_monotonic_ms,
+                scan.boot_id,
+                scan.status,
+                scan.error,
             )
-            scan_id = cursor.lastrowid
-            assert scan_id is not None
+            if scan_id is not None:
+                columns = "id, " + columns
+                values = (scan_id, *values)
+            placeholders = ", ".join("?" for _ in values)
+            cursor = self.connection.execute(
+                f"INSERT INTO scan ({columns}) VALUES ({placeholders})",
+                values,
+            )
+            saved_id = cursor.lastrowid if scan_id is None else scan_id
+            assert saved_id is not None
             for item in scan.observations:
-                insert_observation(self.connection, scan_id, item)
-        return scan_id
+                insert_observation(self.connection, saved_id, item)
+        return saved_id
 
     def close(self) -> None:
         try:

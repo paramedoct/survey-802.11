@@ -121,6 +121,11 @@ interval must exceed the timeout. Unknown keys, invalid interface names and
 relative database paths are rejected. Configuration changes take effect on
 restart.
 
+Monthly files are optional and retain the same scans and observations
+indefinitely. They make large histories easier to move and back up, without
+reducing total stored data. See [monthly storage](docs/monthly-storage.md) for
+configuration, history queries, conversion, and backup behavior.
+
 | Command | Behavior |
 | --- | --- |
 | `collect` | Collect in the foreground until SIGINT or SIGTERM |
@@ -128,11 +133,14 @@ restart.
 | `status` | Show service state, runtime state, durable history, file sizes and free space |
 | `backup` | Create a consistent database snapshot and send it with `sz` |
 | `migrate` | Explicitly upgrade schema 2 with a retained pre-migration snapshot |
+| `migrate-monthly` | Copy schema 3 history into an opt-in monthly database directory |
+| `history` | Query retained scans and observations across one or more monthly files |
 | `diagnose` | Check tools, root access, device, rfkill, storage and an actual active scan |
 | `start` / `stop` / `restart` | Manage the systemd service |
 | `enable` / `disable` | Enable and start, or disable and stop, the service |
 
-`collect`, `validate`, `status`, `diagnose`, `migrate` and `backup` accept `--config PATH`.
+`collect`, `validate`, `status`, `diagnose`, `migrate`, `migrate-monthly`,
+`history` and `backup` accept `--config PATH`.
 `collect` and `status` also accept `--status-path PATH`. `status --json` provides
 structured output. Service management always uses the installed configuration
 and requires root access; starting, restarting and enabling validate it first.

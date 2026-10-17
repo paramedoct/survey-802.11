@@ -14,6 +14,7 @@ from typing import Protocol
 
 from config import AppConfig
 from model import Observation, Scan, ScanError, ScanStatus
+from monthly_storage import MonthlyStorage
 from reporting import write_status as write_status
 from scanner import Scanner
 from storage import Storage
@@ -84,6 +85,7 @@ class Collector:
             "pid": os.getpid(),
             "boot_id": self.boot_id,
             "database_path": str(config.database_path),
+            "database_layout": config.database_layout,
             "device": config.device,
             "started_at": self.clock.timestamp(),
             "running": True,
@@ -154,16 +156,22 @@ class Collector:
         try:
             self._publish()
             self.scanner.prepare(self.stop)
-            with Storage(self.config.database_path) as storage:
-                metrics = StorageMetrics(
-                    storage.connection,
-                    self.config.database_path,
-                    self.clock.monotonic_ms(),
-                    max_gap_ms=max(
-                        180, self.config.interval_s * 2 + self.config.timeout_s
+            storage_type = (
+                MonthlyStorage if self.config.database_layout == "monthly" else Storage
+            )
+            with storage_type(self.config.database_path) as storage:
+                metrics = None
+                if self.config.database_layout == "single":
+                    assert isinstance(storage, Storage)
+                    metrics = StorageMetrics(
+                        storage.connection,
+                        self.config.database_path,
+                        self.clock.monotonic_ms(),
+                        max_gap_ms=max(
+                            180, self.config.interval_s * 2 + self.config.timeout_s
+                        )
+                        * 1000,
                     )
-                    * 1000,
-                )
                 interval_ms = self.config.interval_s * 1_000
                 deadline = self.clock.monotonic_ms()
                 while not self.stop.is_set():
@@ -177,16 +185,21 @@ class Collector:
                     self._record_scan(scan)
                     scan_id = storage.save(scan)
                     self._record_commit(scan, scan_id)
-                    self.state["storage_metrics"] = metrics.record(
-                        storage.connection,
-                        monotonic_ms=self.clock.monotonic_ms(),
-                        observation_count=len(scan.observations),
-                        started_at=scan.started_at,
-                        scan_id=scan_id,
-                        successful_scans=self.successful_scans,
-                        failed_scans=self.failed_scans,
-                        success=scan.status == "success",
-                    )
+                    if metrics is not None:
+                        assert isinstance(storage, Storage)
+                        self.state["storage_metrics"] = metrics.record(
+                            storage.connection,
+                            monotonic_ms=self.clock.monotonic_ms(),
+                            observation_count=len(scan.observations),
+                            started_at=scan.started_at,
+                            scan_id=scan_id,
+                            successful_scans=self.successful_scans,
+                            failed_scans=self.failed_scans,
+                            success=scan.status == "success",
+                        )
+                    else:
+                        assert isinstance(storage, MonthlyStorage)
+                        self.state["storage_metrics"] = dict(storage.metrics)
                     deadline += interval_ms
                     now = self.clock.monotonic_ms()
                     if deadline < now:

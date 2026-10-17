@@ -9,6 +9,7 @@ from pathlib import Path
 from threading import Event
 
 from config import AppConfig
+from history import summarize
 from model import ScanError
 from reporting import existing_parent
 from runtime import shutdown_signals
@@ -59,7 +60,11 @@ def diagnose(config: AppConfig) -> int:
     except OSError as error:
         report("rfkill", False, str(error))
     try:
-        parent = existing_parent(config.database_path)
+        parent = (
+            config.database_path
+            if config.database_layout == "monthly" and config.database_path.is_dir()
+            else existing_parent(config.database_path)
+        )
         usage = shutil.disk_usage(parent)
         report("storage_space", usage.free > 0, f"{usage.free} bytes free on {parent}")
         if config.database_path.exists():
@@ -68,7 +73,11 @@ def diagnose(config: AppConfig) -> int:
                 os.access(config.database_path, os.R_OK | os.W_OK),
                 str(config.database_path),
             )
-            summary = read_summary(config.database_path)
+            summary = (
+                summarize(config.database_path, "monthly")
+                if config.database_layout == "monthly"
+                else read_summary(config.database_path)
+            )
             report(
                 "database_schema", bool(summary["available"]), str(config.database_path)
             )

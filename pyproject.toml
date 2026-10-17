@@ -22,6 +22,7 @@ py-modules = [
     "backup", "commands", "config", "control", "diagnostics", "model", "reporting",
     "runtime", "scan_parser", "scanner", "storage", "interface_control", "migration",
     "storage_metrics",
+    "history", "monthly_storage", "monthly_backup", "monthly_migration",
 ]
 
 [tool.ruff]

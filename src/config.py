@@ -5,7 +5,7 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 DEFAULT_CONFIG = Path("/etc/survey-802.11/survey-802.11.toml")
 DEFAULT_DATABASE = Path("/var/lib/survey-802.11/survey-802.11.db")
@@ -23,6 +23,7 @@ class AppConfig:
     interval_s: int = 60
     timeout_s: int = 20
     database_path: Path = DEFAULT_DATABASE
+    database_layout: Literal["single", "monthly"] = "single"
 
 
 def _table(value: object, name: str) -> Mapping[str, object]:
@@ -63,7 +64,10 @@ def load_config(path: Path) -> AppConfig:
     if interval <= timeout:
         raise ConfigError("interval_s must be greater than timeout_s")
     database = _table(raw.get("database", {}), "database")
-    _keys(database, {"path"}, "database")
+    _keys(database, {"path", "layout"}, "database")
+    layout = database.get("layout", "single")
+    if layout not in ("single", "monthly"):
+        raise ConfigError("database layout must be single or monthly")
     database_path = database.get("path", str(DEFAULT_DATABASE))
     if (
         not isinstance(database_path, str)
@@ -71,5 +75,11 @@ def load_config(path: Path) -> AppConfig:
         or not Path(database_path).is_absolute()
         or Path(database_path).name in {"", ".", ".."}
     ):
-        raise ConfigError("database path must be an absolute file path")
-    return AppConfig(1, device, interval, timeout, Path(database_path))
+        raise ConfigError("database path must be an absolute file or directory path")
+    target = Path(database_path)
+    if target.exists() and (
+        (layout == "single" and not target.is_file())
+        or (layout == "monthly" and not target.is_dir())
+    ):
+        raise ConfigError("database path does not match the selected layout")
+    return AppConfig(1, device, interval, timeout, target, layout)
