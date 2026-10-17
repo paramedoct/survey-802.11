@@ -127,11 +127,12 @@ restart.
 | `validate` | Validate configuration without accessing wireless hardware |
 | `status` | Show service state, runtime state, durable history, file sizes and free space |
 | `backup` | Create a consistent database snapshot and send it with `sz` |
+| `migrate` | Explicitly upgrade schema 2 with a retained pre-migration snapshot |
 | `diagnose` | Check tools, root access, device, rfkill, storage and an actual active scan |
 | `start` / `stop` / `restart` | Manage the systemd service |
 | `enable` / `disable` | Enable and start, or disable and stop, the service |
 
-`collect`, `validate`, `status`, `diagnose` and `backup` accept `--config PATH`.
+`collect`, `validate`, `status`, `diagnose`, `migrate` and `backup` accept `--config PATH`.
 `collect` and `status` also accept `--status-path PATH`. `status --json` provides
 structured output. Service management always uses the installed configuration
 and requires root access; starting, restarting and enabling validate it first.
@@ -185,11 +186,42 @@ already completed are committed before exit. Storage failures roll back the
 entire round, log an error, and terminate with a failure exit code so systemd
 can restart the collector.
 
-The database uses schema version 2 (`PRAGMA user_version`), foreign keys, WAL
+The database uses schema version 3 (`PRAGMA user_version`), foreign keys, WAL
 and `synchronous=FULL`. New databases are initialized transactionally.
-Version 1 databases are migrated transactionally at collector startup: monotonic
-values are divided by 1,000,000, discarding sub-millisecond precision. Unknown
-versions or populated unversioned databases are rejected.
+Immutable dictionaries share addresses, exact name bytes/display strings and
+security JSON strings. Every observation remains a separate record; the
+`observation` read-only view preserves the existing columns and queries.
+Unknown versions or populated unversioned databases are rejected.
+
+Stop collection **before upgrading the installed program** to avoid the
+installer's automatic restart of an already active service. Schema 2 requires
+an explicit migration; collector startup refuses it without changing data:
+
+```sh
+sudo survey-802.11 stop
+sudo make
+sudo survey-802.11 migrate --backup /safe/path/history-before-v3.sqlite3
+sudo survey-802.11 start
+```
+
+`migrate` accepts `--config PATH` and `--minimum-free-bytes N`. The backup parent
+must exist and the destination must not exist. Keep the snapshot until you
+explicitly choose to delete it. Migration holds the same exclusive database
+inode lock as collection, creates a consistent snapshot, copies and compares
+all observations, checks integrity, and commits the schema change atomically.
+Stop other SQLite writers and long-running readers as well. Failed migration
+preserves schema 2 and its data; a backup created before failure remains and a
+retry needs a new backup path. After interruption, inspect the schema version:
+2 permits retry; 3 means the transaction committed. No automatic `VACUUM` runs.
+The space preflight is a conservative floor, not a disk-space guarantee; test
+a representative copy and supply a larger minimum where needed.
+
+Schema 1 must first be upgraded using the previous schema 2 program. That older
+upgrade divides monotonic nanoseconds by 1,000,000 and discards sub-millisecond
+precision; retain a schema 1 backup before doing so. Schema 2 to 3 is lossless.
+Status, diagnosis and backup can still read schema 2; a successful read-only
+schema diagnostic does not mean collection can write that version.
+See [normalization measurements and limitations](docs/storage-normalization.md).
 
 | Table | Fields |
 | --- | --- |

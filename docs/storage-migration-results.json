@@ -1,0 +1,15 @@
+{
+  "scans": 1440,
+  "observations": 72000,
+  "migration_seconds_including_backup_and_validation": 1.363061264999942,
+  "original_bytes": 20094976,
+  "migration_backup_bytes": 20094976,
+  "migrated_bytes_before_vacuum": 23896064,
+  "reusable_free_bytes": 19726336,
+  "migrated_bytes_after_vacuum": 3842048,
+  "sampled_peak_directory_bytes_during_migration": 63924920,
+  "sampled_peak_process_rss_bytes_during_migration": 35586048,
+  "sampling_interval_seconds": 0.01,
+  "normalized_backup_seconds": 0.009672923000152878,
+  "separate_vacuum_seconds": 0.01094958399994539
+}

@@ -1,0 +1,1362 @@
+{
+  "workload_version": 1,
+  "synthetic": true,
+  "interval_seconds": 60,
+  "python": "3.14.4",
+  "sqlite": "3.46.1",
+  "platform": "Linux-6.6.87.2-microsoft-standard-WSL2-x86_64-with-glibc2.43",
+  "storage_module": "storage",
+  "history_sql": "\nSELECT s.started_at, o.* FROM observation AS o\nJOIN scan AS s ON s.id = o.scan_id\nWHERE o.bssid = ? ORDER BY o.scan_id\n",
+  "results": [
+    {
+      "case": {
+        "name": "base",
+        "access_points": 50,
+        "ssid_bytes": 16,
+        "security_bytes": 128,
+        "change_every_scans": 0
+      },
+      "input_sha256": "3381d2afd1608de96270b2dd41afd6ea427448a3cf46a52f389736ab05c2572c",
+      "scans": 1440,
+      "observations": 72000,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 4161536,
+      "logical_growth_bytes": 4100096,
+      "growth_bytes_per_observation": 56.94577777777778,
+      "projected_growth_bytes_per_day": 4100096.0,
+      "projected_growth_bytes_per_30_days": 123002880.0,
+      "sampled_peak_wal_bytes": 4400192,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 8569920,
+      "save_seconds": 0.6032807310008366,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_record",
+          "bytes": 1429504,
+          "share_percent": 34.3503937007874
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 1052672,
+          "share_percent": 25.29527559055118
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 4.822834645669291
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 2.1653543307086616
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 1.7716535433070866
+        },
+        {
+          "name": "security_info",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 1277952,
+          "share_percent": 30.708661417322837
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 1.621768999939377,
+      "history_warm_median_ms": 1.287836500011963,
+      "history_warm_p95_ms": 1.5751559999443998,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    },
+    {
+      "case": {
+        "name": "ap10",
+        "access_points": 10,
+        "ssid_bytes": 16,
+        "security_bytes": 128,
+        "change_every_scans": 0
+      },
+      "input_sha256": "f97b5fb1814179722b603d6019c8c3e991bb8e72c180b05187ae2bcb77d3bf55",
+      "scans": 1440,
+      "observations": 14400,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 1134592,
+      "logical_growth_bytes": 1073152,
+      "growth_bytes_per_observation": 74.52444444444444,
+      "projected_growth_bytes_per_day": 1073152.0,
+      "projected_growth_bytes_per_30_days": 32194560.0,
+      "sampled_peak_wal_bytes": 4190072,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 5332856,
+      "save_seconds": 0.14872288000185563,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        },
+        {
+          "name": "network_name",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        },
+        {
+          "name": "observation_record",
+          "bytes": 278528,
+          "share_percent": 24.548736462093864
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 208896,
+          "share_percent": 18.4115523465704
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 17.689530685920577
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 7.9422382671480145
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 6.4981949458483745
+        },
+        {
+          "name": "security_info",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 245760,
+          "share_percent": 21.660649819494584
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.36101083032490977
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 1.220490000036989,
+      "history_warm_median_ms": 1.2633974999971542,
+      "history_warm_p95_ms": 1.7863350000197897,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    },
+    {
+      "case": {
+        "name": "ap200",
+        "access_points": 200,
+        "ssid_bytes": 16,
+        "security_bytes": 128,
+        "change_every_scans": 0
+      },
+      "input_sha256": "3df36dbd8660a787c04a0b19564453b196062b632992dd0d8eba3473807e60f9",
+      "scans": 1440,
+      "observations": 288000,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 16142336,
+      "logical_growth_bytes": 16080896,
+      "growth_bytes_per_observation": 55.836444444444446,
+      "projected_growth_bytes_per_day": 16080896.0,
+      "projected_growth_bytes_per_30_days": 482426880.0,
+      "sampled_peak_wal_bytes": 5178872,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 21292536,
+      "save_seconds": 2.5151248879946024,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 12288,
+          "share_percent": 0.07612281146917026
+        },
+        {
+          "name": "network_name",
+          "bytes": 12288,
+          "share_percent": 0.07612281146917026
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 16384,
+          "share_percent": 0.10149708195889369
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 4096,
+          "share_percent": 0.025374270489723422
+        },
+        {
+          "name": "observation_record",
+          "bytes": 5967872,
+          "share_percent": 36.97031210352703
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 4407296,
+          "share_percent": 27.3027150469424
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 1.2433392539964476
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 0.5582339507739152
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 0.4567368688150216
+        },
+        {
+          "name": "security_info",
+          "bytes": 4096,
+          "share_percent": 0.025374270489723422
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 4096,
+          "share_percent": 0.025374270489723422
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 12288,
+          "share_percent": 0.07612281146917026
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 4096,
+          "share_percent": 0.025374270489723422
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 5328896,
+          "share_percent": 33.01192590713017
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.025374270489723422
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 2.2224489999871366,
+      "history_warm_median_ms": 1.9598574999690754,
+      "history_warm_p95_ms": 2.182386999947994,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    },
+    {
+      "case": {
+        "name": "ssid8",
+        "access_points": 50,
+        "ssid_bytes": 8,
+        "security_bytes": 128,
+        "change_every_scans": 0
+      },
+      "input_sha256": "b314621f1008dd270f004bc09dbe303d1b34b542ba278ccb02e9f6557f243e0f",
+      "scans": 1440,
+      "observations": 72000,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 4161536,
+      "logical_growth_bytes": 4100096,
+      "growth_bytes_per_observation": 56.94577777777778,
+      "projected_growth_bytes_per_day": 4100096.0,
+      "projected_growth_bytes_per_30_days": 123002880.0,
+      "sampled_peak_wal_bytes": 4400192,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 8569920,
+      "save_seconds": 0.6034096479968412,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_record",
+          "bytes": 1429504,
+          "share_percent": 34.3503937007874
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 1052672,
+          "share_percent": 25.29527559055118
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 4.822834645669291
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 2.1653543307086616
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 1.7716535433070866
+        },
+        {
+          "name": "security_info",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 1277952,
+          "share_percent": 30.708661417322837
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 1.4684049999686977,
+      "history_warm_median_ms": 1.2542154999550803,
+      "history_warm_p95_ms": 1.5433829998983128,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    },
+    {
+      "case": {
+        "name": "ssid32",
+        "access_points": 50,
+        "ssid_bytes": 32,
+        "security_bytes": 128,
+        "change_every_scans": 0
+      },
+      "input_sha256": "9103d7accab604ab9605ef34f4ca315bf89715fbb19b684f97c109894a5f11bf",
+      "scans": 1440,
+      "observations": 72000,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 4161536,
+      "logical_growth_bytes": 4100096,
+      "growth_bytes_per_observation": 56.94577777777778,
+      "projected_growth_bytes_per_day": 4100096.0,
+      "projected_growth_bytes_per_30_days": 123002880.0,
+      "sampled_peak_wal_bytes": 4400192,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 8569920,
+      "save_seconds": 0.618422911999005,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_record",
+          "bytes": 1429504,
+          "share_percent": 34.3503937007874
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 1052672,
+          "share_percent": 25.29527559055118
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 4.822834645669291
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 2.1653543307086616
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 1.7716535433070866
+        },
+        {
+          "name": "security_info",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 1277952,
+          "share_percent": 30.708661417322837
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 1.4745209999773579,
+      "history_warm_median_ms": 1.2543359999881432,
+      "history_warm_p95_ms": 1.5145159999292446,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    },
+    {
+      "case": {
+        "name": "security64",
+        "access_points": 50,
+        "ssid_bytes": 16,
+        "security_bytes": 64,
+        "change_every_scans": 0
+      },
+      "input_sha256": "d0c91e6bc154918dc36eb3c3a86d28f036cd1e9e0a805437e531aebeb8e9c79b",
+      "scans": 1440,
+      "observations": 72000,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 4161536,
+      "logical_growth_bytes": 4100096,
+      "growth_bytes_per_observation": 56.94577777777778,
+      "projected_growth_bytes_per_day": 4100096.0,
+      "projected_growth_bytes_per_30_days": 123002880.0,
+      "sampled_peak_wal_bytes": 4400192,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 8569920,
+      "save_seconds": 0.6015616629993019,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_record",
+          "bytes": 1429504,
+          "share_percent": 34.3503937007874
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 1052672,
+          "share_percent": 25.29527559055118
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 4.822834645669291
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 2.1653543307086616
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 1.7716535433070866
+        },
+        {
+          "name": "security_info",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 1277952,
+          "share_percent": 30.708661417322837
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 1.6454990000056569,
+      "history_warm_median_ms": 1.2448840000161,
+      "history_warm_p95_ms": 1.3885050000226329,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    },
+    {
+      "case": {
+        "name": "security512",
+        "access_points": 50,
+        "ssid_bytes": 16,
+        "security_bytes": 512,
+        "change_every_scans": 0
+      },
+      "input_sha256": "cc42753309ac4a8af35fd7567f58f1de4c055a797de725118026a6dfcbb815e0",
+      "scans": 1440,
+      "observations": 72000,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 4161536,
+      "logical_growth_bytes": 4100096,
+      "growth_bytes_per_observation": 56.94577777777778,
+      "projected_growth_bytes_per_day": 4100096.0,
+      "projected_growth_bytes_per_30_days": 123002880.0,
+      "sampled_peak_wal_bytes": 4400192,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 8569920,
+      "save_seconds": 0.5972404300003973,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "observation_record",
+          "bytes": 1429504,
+          "share_percent": 34.3503937007874
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 1052672,
+          "share_percent": 25.29527559055118
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 4.822834645669291
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 2.1653543307086616
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 1.7716535433070866
+        },
+        {
+          "name": "security_info",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 1277952,
+          "share_percent": 30.708661417322837
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.09842519685039369
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 1.6563350000069477,
+      "history_warm_median_ms": 1.3263050000205112,
+      "history_warm_p95_ms": 1.6788870000254974,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    },
+    {
+      "case": {
+        "name": "change60",
+        "access_points": 50,
+        "ssid_bytes": 16,
+        "security_bytes": 128,
+        "change_every_scans": 60
+      },
+      "input_sha256": "9cf72abb461696f3cc9049554c7d04cf3baebc1d4839891b7224415b7bbe89b0",
+      "scans": 1440,
+      "observations": 72000,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 4370432,
+      "logical_growth_bytes": 4308992,
+      "growth_bytes_per_observation": 59.84711111111111,
+      "projected_growth_bytes_per_day": 4308992.0,
+      "projected_growth_bytes_per_30_days": 129269760.0,
+      "sampled_peak_wal_bytes": 4412552,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 8778888,
+      "save_seconds": 0.6196476510033335,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 4096,
+          "share_percent": 0.09372071227741331
+        },
+        {
+          "name": "network_name",
+          "bytes": 57344,
+          "share_percent": 1.3120899718837862
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 61440,
+          "share_percent": 1.4058106841611997
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 20480,
+          "share_percent": 0.4686035613870665
+        },
+        {
+          "name": "observation_record",
+          "bytes": 1495040,
+          "share_percent": 34.20805998125586
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 1052672,
+          "share_percent": 24.08622305529522
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 4.5923149015932525
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 2.0618556701030926
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 1.6869728209934396
+        },
+        {
+          "name": "security_info",
+          "bytes": 4096,
+          "share_percent": 0.09372071227741331
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 4096,
+          "share_percent": 0.09372071227741331
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 4096,
+          "share_percent": 0.09372071227741331
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 20480,
+          "share_percent": 0.4686035613870665
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 1277952,
+          "share_percent": 29.24086223055295
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.09372071227741331
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 1.5290260000710987,
+      "history_warm_median_ms": 1.2666229999922507,
+      "history_warm_p95_ms": 1.3175110000247514,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    },
+    {
+      "case": {
+        "name": "change1",
+        "access_points": 50,
+        "ssid_bytes": 16,
+        "security_bytes": 128,
+        "change_every_scans": 1
+      },
+      "input_sha256": "09791a5e567c2f657437bde2d26a1b3fdff3a1a1689070eec8b9795ecabae1d6",
+      "scans": 1440,
+      "observations": 72000,
+      "schema_version": 3,
+      "settings": {
+        "page_size": 4096,
+        "journal_mode": "wal",
+        "synchronous": 2,
+        "wal_autocheckpoint": 1000
+      },
+      "empty_database_bytes": 61440,
+      "durable_database_bytes": 13463552,
+      "logical_growth_bytes": 13402112,
+      "growth_bytes_per_observation": 186.14044444444446,
+      "projected_growth_bytes_per_day": 13402112.0,
+      "projected_growth_bytes_per_30_days": 402063360.0,
+      "sampled_peak_wal_bytes": 4770992,
+      "sampled_peak_shm_bytes": 32768,
+      "sampled_peak_total_file_bytes": 18242736,
+      "save_seconds": 1.010814454000979,
+      "dbstat_objects": [
+        {
+          "name": "access_point",
+          "bytes": 4096,
+          "share_percent": 0.0304228780042592
+        },
+        {
+          "name": "network_name",
+          "bytes": 3039232,
+          "share_percent": 22.57377547916033
+        },
+        {
+          "name": "network_name_value",
+          "bytes": 3543040,
+          "share_percent": 26.31578947368421
+        },
+        {
+          "name": "observation_profile",
+          "bytes": 1032192,
+          "share_percent": 7.666565257073319
+        },
+        {
+          "name": "observation_record",
+          "bytes": 1540096,
+          "share_percent": 11.439002129601459
+        },
+        {
+          "name": "observation_record_address_time",
+          "bytes": 1052672,
+          "share_percent": 7.818679647094615
+        },
+        {
+          "name": "scan",
+          "bytes": 200704,
+          "share_percent": 1.4907210222087008
+        },
+        {
+          "name": "scan_boot_time",
+          "bytes": 90112,
+          "share_percent": 0.6693033160937024
+        },
+        {
+          "name": "scan_time",
+          "bytes": 73728,
+          "share_percent": 0.5476118040766657
+        },
+        {
+          "name": "security_info",
+          "bytes": 208896,
+          "share_percent": 1.5515667782172193
+        },
+        {
+          "name": "security_info_value",
+          "bytes": 229376,
+          "share_percent": 1.7036811682385153
+        },
+        {
+          "name": "sqlite_autoindex_access_point_1",
+          "bytes": 4096,
+          "share_percent": 0.0304228780042592
+        },
+        {
+          "name": "sqlite_autoindex_observation_profile_1",
+          "bytes": 1163264,
+          "share_percent": 8.640097353209613
+        },
+        {
+          "name": "sqlite_autoindex_observation_record_1",
+          "bytes": 1277952,
+          "share_percent": 9.491937937328872
+        },
+        {
+          "name": "sqlite_schema",
+          "bytes": 4096,
+          "share_percent": 0.0304228780042592
+        }
+      ],
+      "dbstat_error": null,
+      "history_first_ms": 2.412965999951666,
+      "history_warm_median_ms": 2.279031999989911,
+      "history_warm_p95_ms": 2.587836000088828,
+      "history_rows": 1440,
+      "history_query_plan": [
+        [
+          9,
+          0,
+          0,
+          "SEARCH a USING COVERING INDEX sqlite_autoindex_access_point_1 (bssid=?)"
+        ],
+        [
+          15,
+          0,
+          0,
+          "SEARCH r USING INDEX observation_record_address_time (ap_id=?)"
+        ],
+        [
+          20,
+          0,
+          0,
+          "SEARCH p USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          23,
+          0,
+          0,
+          "SEARCH n USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          26,
+          0,
+          0,
+          "SEARCH q USING INTEGER PRIMARY KEY (rowid=?)"
+        ],
+        [
+          29,
+          0,
+          0,
+          "SEARCH s USING INTEGER PRIMARY KEY (rowid=?)"
+        ]
+      ],
+      "integrity_check": "ok"
+    }
+  ]
+}

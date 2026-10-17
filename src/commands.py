@@ -15,6 +15,7 @@ from backup import send_backup
 from config import DEFAULT_CONFIG, DEFAULT_STATUS, ConfigError, load_config
 from diagnostics import diagnose
 from interface_control import prepare_interface, restore_interface
+from migration import migrate
 from reporting import show_status
 from runtime import Collector, shutdown_signals
 from scanner import IwScanner
@@ -30,9 +31,14 @@ def _parser() -> argparse.ArgumentParser:
         "diagnose",
         "prepare-interface",
         "backup",
+        "migrate",
     ):
         command = subparsers.add_parser(name)
         command.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    subparsers.choices["migrate"].add_argument("--backup", type=Path, required=True)
+    subparsers.choices["migrate"].add_argument(
+        "--minimum-free-bytes", type=int, default=0
+    )
     subparsers.add_parser("restore-interface")
     for name in ("start", "stop", "restart", "enable", "disable"):
         subparsers.add_parser(name)
@@ -58,6 +64,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             restore_interface()
             return 0
         config = load_config(arguments.config)
+        if arguments.command == "migrate":
+            migrate(
+                config.database_path, arguments.backup, arguments.minimum_free_bytes
+            )
+            print(f"migration complete; original snapshot: {arguments.backup}")
+            return 0
         if arguments.command == "backup":
             return send_backup(config.database_path)
         if arguments.command == "prepare-interface":
