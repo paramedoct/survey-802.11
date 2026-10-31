@@ -7,7 +7,7 @@ ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 DESTDIR ?=
 export DESTDIR
 
-.PHONY: all clean setup backup
+.PHONY: all clean setup
 
 all:
 	@if [ "$$(id -u)" -ne 0 ]; then
@@ -76,9 +76,3 @@ clean:
 
 setup:
 	@"$(ROOT_DIR)/3rdparty/setup-debian.sh"
-
-backup:
-	@if [ "$$(id -u)" -ne 0 ]; then
-	  exec sudo -- /opt/survey-802.11/venv/bin/survey-802.11 backup
-	fi
-	exec /opt/survey-802.11/venv/bin/survey-802.11 backup
