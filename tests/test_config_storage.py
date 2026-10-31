@@ -9,7 +9,7 @@ from pathlib import Path
 
 from config import AppConfig, ConfigError, load_config
 from model import Observation
-from storage import Storage, read_summary
+from storage.database import Storage, read_summary
 from tests.helpers import sample_scan
 
 

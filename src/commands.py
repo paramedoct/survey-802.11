@@ -10,15 +10,15 @@ from pathlib import Path
 from threading import Event
 from typing import cast
 
-import control
-from backup import send_backup
+from collection.runtime import Collector, shutdown_signals
+from collection.scanner import IwScanner
 from config import DEFAULT_CONFIG, DEFAULT_STATUS, ConfigError, load_config
-from diagnostics import diagnose
-from history import list_ssids
-from interface_control import prepare_interface, restore_interface
-from reporting import show_status
-from runtime import Collector, shutdown_signals
-from scanner import IwScanner
+from storage.backup import send_backup
+from storage.history import list_ssids
+from system import control
+from system.diagnostics import diagnose
+from system.interface import prepare_interface, restore_interface
+from system.reporting import show_status
 
 
 def _parser() -> argparse.ArgumentParser:

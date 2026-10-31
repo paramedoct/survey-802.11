@@ -9,9 +9,9 @@ from unittest.mock import patch
 
 from config import AppConfig
 from model import Observation
-from reporting import _growth_status
-from storage import Storage
-from storage_metrics import StorageMetrics, logical_size
+from storage.database import Storage
+from storage.metrics import StorageMetrics, logical_size
+from system.reporting import _growth_status
 from tests.helpers import sample_scan
 from tests.test_runtime import simulated_collector
 
@@ -23,7 +23,7 @@ class StorageMetricsTests(unittest.TestCase):
             _,
             root,
         ):
-            with self.assertLogs("runtime", level="WARNING"):
+            with self.assertLogs("collection.runtime", level="WARNING"):
                 collector.run()
             runtime = json.loads((root / "status.json").read_text())
             self.assertEqual(runtime["storage_metrics"]["retained_observations"], 2)
@@ -83,7 +83,7 @@ class StorageMetricsTests(unittest.TestCase):
                 result: dict[str, object] = {}
                 for index in range(1, 11):
                     with patch(
-                        "storage_metrics.logical_size",
+                        "storage.metrics.logical_size",
                         return_value=initial_bytes + index * 4096,
                     ):
                         result = metrics.record(
@@ -100,7 +100,7 @@ class StorageMetricsTests(unittest.TestCase):
                     float(str(result["growth_bytes_per_second"])), 40_960 / 600
                 )
                 self.assertEqual(result["measurement_seconds"], 600)
-                with patch("storage_metrics.logical_size", return_value=initial_bytes):
+                with patch("storage.metrics.logical_size", return_value=initial_bytes):
                     result = metrics.record(
                         store.connection,
                         monotonic_ms=660_000,
@@ -116,7 +116,7 @@ class StorageMetricsTests(unittest.TestCase):
                     result["growth_unknown_reason"], "latest scan was not successful"
                 )
                 self.assertEqual(result["measurement_seconds"], 0)
-                with patch("storage_metrics.logical_size", return_value=initial_bytes):
+                with patch("storage.metrics.logical_size", return_value=initial_bytes):
                     result = metrics.record(
                         store.connection,
                         monotonic_ms=1_000_000,

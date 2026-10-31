@@ -8,8 +8,8 @@ from contextlib import suppress
 from threading import Event
 from typing import Protocol
 
+from collection.parser import parse_scan
 from model import Observation, ScanError
-from scan_parser import parse_scan
 
 
 class Scanner(Protocol):

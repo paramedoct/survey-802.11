@@ -8,8 +8,8 @@ from pathlib import Path
 from threading import Event, Timer
 from unittest.mock import patch
 
+from collection.scanner import IwScanner, run_command
 from model import ScanError
-from scanner import IwScanner, run_command
 
 
 class ProcessTests(unittest.TestCase):
@@ -32,7 +32,7 @@ class ProcessTests(unittest.TestCase):
                 2,
                 Event(),
             )
-        with patch("scanner.run_command", return_value=b"") as command:
+        with patch("collection.scanner.run_command", return_value=b"") as command:
             scanner = IwScanner("wlan0")
             stop = Event()
             scanner.prepare(stop)

@@ -8,7 +8,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from reporting import write_status
+from system.reporting import write_status
 
 _LOG = logging.getLogger(__name__)
 DEFAULT_STATE = Path("/run/survey-802.11/interface-state.json")

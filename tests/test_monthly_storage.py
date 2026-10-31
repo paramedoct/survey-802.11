@@ -13,10 +13,10 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-from backup import snapshot_monthly
-from history import summarize
 from model import Observation
-from storage import MonthlyStorage, connect_readonly, month_of, read_manifest
+from storage.backup import snapshot_monthly
+from storage.database import MonthlyStorage, connect_readonly, month_of, read_manifest
+from storage.history import summarize
 from tests.helpers import observation_history, sample_scan
 
 
@@ -102,7 +102,9 @@ class MonthlyStorageTests(unittest.TestCase):
             root = Path(directory) / "monthly"
             with (
                 MonthlyStorage(root) as store,
-                patch("storage.write_manifest", side_effect=OSError("disk full")),
+                patch(
+                    "storage.database.write_manifest", side_effect=OSError("disk full")
+                ),
                 self.assertRaises(OSError),
             ):
                 store.save(sample_scan())
@@ -116,7 +118,7 @@ class MonthlyStorageTests(unittest.TestCase):
             root = Path(directory) / "monthly"
             script = (
                 "import os, sys; from pathlib import Path; "
-                "from storage import MonthlyStorage; "
+                "from storage.database import MonthlyStorage; "
                 "from tests.helpers import sample_scan; "
                 "s = MonthlyStorage(Path(sys.argv[1])); "
                 "s.save(sample_scan()); os._exit(9)"
@@ -157,7 +159,9 @@ class MonthlyStorageTests(unittest.TestCase):
                         store.save(february)
                     return connect_readonly(path)
 
-                with patch("backup.connect_readonly", side_effect=concurrent_read):
+                with patch(
+                    "storage.backup.connect_readonly", side_effect=concurrent_read
+                ):
                     snapshot_monthly(root, backup)
             self.assertEqual(read_manifest(backup)["months"], ["2026-01", "2026-02"])
             self.assertEqual(

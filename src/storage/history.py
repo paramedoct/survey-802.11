@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
 
-from storage import Layout, connect_readonly, history_boundary, read_summary
+from storage.database import Layout, connect_readonly, history_boundary, read_summary
 
 
 @contextmanager

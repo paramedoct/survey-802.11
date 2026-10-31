@@ -8,7 +8,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from model import Observation, Scan
-from storage import Storage, read_summary
+from storage.database import Storage, read_summary
 from tests.helpers import sample_scan
 
 

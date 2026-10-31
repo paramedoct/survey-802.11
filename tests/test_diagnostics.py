@@ -7,9 +7,9 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-import diagnostics
 from config import AppConfig
 from model import ScanError
+from system import diagnostics
 
 
 class DiagnosticsTests(unittest.TestCase):
@@ -32,32 +32,38 @@ class DiagnosticsTests(unittest.TestCase):
                 with (
                     self.subTest(failure=failure),
                     patch(
-                        "diagnostics.shutil.which",
+                        "system.diagnostics.shutil.which",
                         side_effect=[
                             None if name == failure else "/tool"
                             for name in ("iw", "ip", "systemctl")
                         ],
                     ),
                     patch(
-                        "diagnostics.os.geteuid",
+                        "system.diagnostics.os.geteuid",
                         return_value=1000 if failure == "permissions" else 0,
                     ),
-                    patch("diagnostics.Path.exists", return_value=failure != "device"),
-                    patch("diagnostics.existing_parent", return_value=root),
                     patch(
-                        "diagnostics._rfkill_status",
+                        "system.diagnostics.Path.exists",
+                        return_value=failure != "device",
+                    ),
+                    patch("system.diagnostics.existing_parent", return_value=root),
+                    patch(
+                        "system.diagnostics._rfkill_status",
                         return_value=(failure != "rfkill", "radio state"),
                     ),
-                    patch("diagnostics.read_summary", return_value={"available": True}),
-                    patch("diagnostics.os.access", return_value=True),
                     patch(
-                        "diagnostics.os.fsync",
+                        "system.diagnostics.read_summary",
+                        return_value={"available": True},
+                    ),
+                    patch("system.diagnostics.os.access", return_value=True),
+                    patch(
+                        "system.diagnostics.os.fsync",
                         side_effect=OSError("storage failure")
                         if failure == "storage"
                         else None,
                     ),
                     patch(
-                        "diagnostics.run_command",
+                        "system.diagnostics.run_command",
                         side_effect=[
                             b"Interface wlan0",
                             b"Connected"
@@ -65,7 +71,7 @@ class DiagnosticsTests(unittest.TestCase):
                             else b"Not connected.\n",
                         ],
                     ) as run,
-                    patch("diagnostics.IwScanner") as scanner,
+                    patch("system.diagnostics.IwScanner") as scanner,
                     redirect_stdout(output),
                 ):
                     scanner.return_value.scan.return_value = ()
@@ -102,19 +108,23 @@ class DiagnosticsTests(unittest.TestCase):
             for failure in (False, True):
                 with (
                     self.subTest(failure=failure),
-                    patch("diagnostics.shutil.which", return_value="/tool"),
-                    patch("diagnostics.os.geteuid", return_value=0),
-                    patch("diagnostics.Path.exists", return_value=True),
+                    patch("system.diagnostics.shutil.which", return_value="/tool"),
+                    patch("system.diagnostics.os.geteuid", return_value=0),
+                    patch("system.diagnostics.Path.exists", return_value=True),
                     patch(
-                        "diagnostics._rfkill_status", return_value=(True, "unblocked")
+                        "system.diagnostics._rfkill_status",
+                        return_value=(True, "unblocked"),
                     ),
-                    patch("diagnostics.read_summary", return_value={"available": True}),
-                    patch("diagnostics.os.access", return_value=True),
                     patch(
-                        "diagnostics.run_command",
+                        "system.diagnostics.read_summary",
+                        return_value={"available": True},
+                    ),
+                    patch("system.diagnostics.os.access", return_value=True),
+                    patch(
+                        "system.diagnostics.run_command",
                         side_effect=[b"Interface wlan0", b"Not connected.\n"],
                     ),
-                    patch("diagnostics.IwScanner") as scanner,
+                    patch("system.diagnostics.IwScanner") as scanner,
                     redirect_stdout(io.StringIO()),
                 ):
                     if failure:

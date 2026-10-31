@@ -10,7 +10,7 @@ import tempfile
 from contextlib import closing
 from pathlib import Path
 
-from storage import (
+from storage.database import (
     Layout,
     check_database,
     check_identity,

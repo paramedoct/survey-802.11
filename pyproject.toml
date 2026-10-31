@@ -18,12 +18,11 @@ dev = ["mypy>=1.19,<2", "ruff>=0.15,<1"]
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-py-modules = [
-    "backup", "commands", "config", "control", "diagnostics", "model", "reporting",
-    "runtime", "scan_parser", "scanner", "storage", "interface_control",
-    "storage_metrics",
-    "history",
-]
+py-modules = ["commands", "config", "model"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["collection", "storage", "system"]
 
 [tool.ruff]
 target-version = "py313"

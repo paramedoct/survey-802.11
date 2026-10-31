@@ -11,9 +11,15 @@ from pathlib import Path
 from unittest.mock import patch
 
 from commands import main
-from history import list_ssids
 from model import Observation
-from storage import Layout, MonthlyStorage, Storage, connect_readonly, open_storage
+from storage.database import (
+    Layout,
+    MonthlyStorage,
+    Storage,
+    connect_readonly,
+    open_storage,
+)
+from storage.history import list_ssids
 from tests.helpers import sample_scan
 
 
@@ -119,7 +125,9 @@ class HistoryTests(unittest.TestCase):
                         )
                     return connect_readonly(source)
 
-                with patch("history.connect_readonly", side_effect=append_then_read):
+                with patch(
+                    "storage.history.connect_readonly", side_effect=append_then_read
+                ):
                     rows = list_ssids(path, "monthly")
             self.assertEqual([row.ssid_bytes for row in rows], [b"original"])
 

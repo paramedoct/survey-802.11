@@ -8,7 +8,7 @@ from contextlib import closing
 from pathlib import Path
 from unittest.mock import patch
 
-from backup import send_backup
+from storage.backup import send_backup
 
 
 class BackupTests(unittest.TestCase):
@@ -50,8 +50,8 @@ class BackupTests(unittest.TestCase):
                     return subprocess.CompletedProcess(arguments, 0)
 
                 with (
-                    patch("backup.shutil.which", return_value="/usr/bin/sz"),
-                    patch("backup.subprocess.run", side_effect=transfer),
+                    patch("storage.backup.shutil.which", return_value="/usr/bin/sz"),
+                    patch("storage.backup.subprocess.run", side_effect=transfer),
                 ):
                     self.assertEqual(send_backup(database), 0)
                 self.assertEqual(
@@ -66,9 +66,9 @@ class BackupTests(unittest.TestCase):
             with closing(sqlite3.connect(database)) as connection:
                 connection.execute("CREATE TABLE history (id INTEGER)")
             with (
-                patch("backup.shutil.which", return_value="/usr/bin/sz"),
+                patch("storage.backup.shutil.which", return_value="/usr/bin/sz"),
                 patch(
-                    "backup.subprocess.run",
+                    "storage.backup.subprocess.run",
                     return_value=subprocess.CompletedProcess([], 7),
                 ) as run,
             ):
@@ -80,8 +80,8 @@ class BackupTests(unittest.TestCase):
     def test_missing_database_is_not_created_or_sent(self) -> None:
         with (
             tempfile.TemporaryDirectory() as directory,
-            patch("backup.shutil.which", return_value="/usr/bin/sz"),
-            patch("backup.subprocess.run") as run,
+            patch("storage.backup.shutil.which", return_value="/usr/bin/sz"),
+            patch("storage.backup.subprocess.run") as run,
         ):
             database = Path(directory) / "missing.db"
             with self.assertRaises(sqlite3.OperationalError):
@@ -91,7 +91,7 @@ class BackupTests(unittest.TestCase):
 
     def test_missing_sz_is_reported(self) -> None:
         with (
-            patch("backup.shutil.which", return_value=None),
+            patch("storage.backup.shutil.which", return_value=None),
             self.assertRaisesRegex(RuntimeError, "sz is required"),
         ):
             send_backup(Path("/missing.db"))

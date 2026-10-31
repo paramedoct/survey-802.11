@@ -12,12 +12,12 @@ from threading import Event
 from types import FrameType
 from typing import Protocol
 
+from collection.scanner import Scanner
 from config import AppConfig
 from model import Observation, Scan, ScanError, ScanStatus
-from reporting import write_status
-from scanner import Scanner
-from storage import Storage, open_storage
-from storage_metrics import StorageMetrics
+from storage.database import Storage, open_storage
+from storage.metrics import StorageMetrics
+from system.reporting import write_status
 
 _LOG = logging.getLogger(__name__)
 

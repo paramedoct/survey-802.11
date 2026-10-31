@@ -8,8 +8,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from unittest.mock import patch
 
 import commands
-import control
 from config import AppConfig
+from system import control
 
 
 class CommandTests(unittest.TestCase):
@@ -30,9 +30,9 @@ class CommandTests(unittest.TestCase):
             with (
                 self.subTest(action=action),
                 patch("commands.load_config", return_value=AppConfig()) as load,
-                patch("control.os.geteuid", return_value=0),
+                patch("system.control.os.geteuid", return_value=0),
                 patch(
-                    "control.subprocess.run",
+                    "system.control.subprocess.run",
                     return_value=subprocess.CompletedProcess([], 0),
                 ) as run,
             ):
@@ -46,14 +46,14 @@ class CommandTests(unittest.TestCase):
                     load.call_count, int(action in {"start", "restart", "enable"})
                 )
         with (
-            patch("control.os.geteuid", return_value=1000),
+            patch("system.control.os.geteuid", return_value=1000),
             self.assertRaises(PermissionError),
         ):
             control.manage("start")
         with (
-            patch("control.os.geteuid", return_value=0),
+            patch("system.control.os.geteuid", return_value=0),
             patch(
-                "control.subprocess.run",
+                "system.control.subprocess.run",
                 return_value=subprocess.CompletedProcess([], 7),
             ),
         ):
@@ -97,10 +97,12 @@ class CommandTests(unittest.TestCase):
         self.assertIn("disk full", output.getvalue())
 
     def test_service_status_unavailable_and_properties(self) -> None:
-        with patch("control.subprocess.run", side_effect=FileNotFoundError("missing")):
+        with patch(
+            "system.control.subprocess.run", side_effect=FileNotFoundError("missing")
+        ):
             self.assertIn("error", control.service_status())
         with patch(
-            "control.subprocess.run",
+            "system.control.subprocess.run",
             return_value=subprocess.CompletedProcess(
                 [], 0, "ActiveState=active\nUnitFileState=enabled\n", ""
             ),

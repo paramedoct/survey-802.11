@@ -4,9 +4,9 @@ import sqlite3
 from contextlib import closing
 from pathlib import Path
 
-from history import sources
 from model import Observation, Scan
-from storage import Layout
+from storage.database import Layout
+from storage.history import sources
 
 
 def sample_scan(*observations: Observation) -> Scan:

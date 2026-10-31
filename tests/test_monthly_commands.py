@@ -11,14 +11,14 @@ from pathlib import Path
 from threading import Event
 from unittest.mock import patch
 
-from backup import send_backup
+from collection.runtime import Collector
 from commands import main
 from config import AppConfig, ConfigError, load_config
-from history import summarize
 from model import Observation
-from reporting import _disk_status
-from runtime import Collector
-from storage import MonthlyStorage
+from storage.backup import send_backup
+from storage.database import MonthlyStorage
+from storage.history import summarize
+from system.reporting import _disk_status
 from tests.helpers import observation_history, sample_scan
 
 
@@ -107,8 +107,8 @@ class MonthlyCommandTests(unittest.TestCase):
                 return subprocess.CompletedProcess(arguments, 0)
 
             with (
-                patch("backup.shutil.which", return_value="/usr/bin/sz"),
-                patch("backup.subprocess.run", side_effect=transfer),
+                patch("storage.backup.shutil.which", return_value="/usr/bin/sz"),
+                patch("storage.backup.subprocess.run", side_effect=transfer),
             ):
                 self.assertEqual(send_backup(root, layout="monthly"), 0)
             self.assertEqual(len(sent), 1)

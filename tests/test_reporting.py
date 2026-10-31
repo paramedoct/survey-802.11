@@ -12,10 +12,10 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import commands
-import reporting
 from config import AppConfig
 from model import Observation
-from storage import Storage, read_summary
+from storage.database import Storage, read_summary
+from system import reporting
 from tests.helpers import sample_scan
 
 
@@ -62,9 +62,12 @@ class ReportingTests(unittest.TestCase):
                 output = io.StringIO()
                 with (
                     self.subTest(as_json=as_json),
-                    patch("control.service_status", return_value=expected["service"]),
                     patch(
-                        "reporting.shutil.disk_usage",
+                        "system.control.service_status",
+                        return_value=expected["service"],
+                    ),
+                    patch(
+                        "system.reporting.shutil.disk_usage",
                         return_value=SimpleNamespace(free=123),
                     ),
                     redirect_stdout(output),
@@ -115,7 +118,8 @@ class ReportingTests(unittest.TestCase):
                 with (
                     patch("commands.load_config", return_value=config),
                     patch(
-                        "control.service_status", return_value={"ActiveState": "active"}
+                        "system.control.service_status",
+                        return_value={"ActiveState": "active"},
                     ),
                     redirect_stdout(output),
                 ):
@@ -153,7 +157,7 @@ class ReportingTests(unittest.TestCase):
                 with (
                     redirect_stdout(output),
                     patch(
-                        "control.service_status",
+                        "system.control.service_status",
                         return_value={"ActiveState": "inactive"},
                     ),
                 ):
@@ -176,7 +180,7 @@ class ReportingTests(unittest.TestCase):
             path = Path(directory) / "status.json"
             reporting.write_status(path, {"counter": 1})
             with (
-                patch("reporting.os.replace", side_effect=OSError("failure")),
+                patch("system.reporting.os.replace", side_effect=OSError("failure")),
                 self.assertRaises(OSError),
             ):
                 reporting.write_status(path, {"counter": 2})

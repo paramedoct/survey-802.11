@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from interface_control import prepare_interface, restore_interface
+from system.interface import prepare_interface, restore_interface
 
 
 def result(stdout: str = "", code: int = 0) -> subprocess.CompletedProcess[str]:
@@ -18,10 +18,10 @@ class InterfaceControlTests(unittest.TestCase):
     def test_start_stop_restore_original_management(self) -> None:
         with (
             tempfile.TemporaryDirectory() as directory,
-            patch("interface_control.os.geteuid", return_value=0),
-            patch("interface_control.shutil.which", return_value="/usr/bin/nmcli"),
+            patch("system.interface.os.geteuid", return_value=0),
+            patch("system.interface.shutil.which", return_value="/usr/bin/nmcli"),
             patch(
-                "interface_control.subprocess.run",
+                "system.interface.subprocess.run",
                 side_effect=[
                     result("yes\n"),
                     result(),
@@ -94,9 +94,9 @@ class InterfaceControlTests(unittest.TestCase):
             with (
                 self.subTest(executable=executable, response=response),
                 tempfile.TemporaryDirectory() as directory,
-                patch("interface_control.os.geteuid", return_value=0),
-                patch("interface_control.shutil.which", return_value=executable),
-                patch("interface_control.subprocess.run", return_value=response) as run,
+                patch("system.interface.os.geteuid", return_value=0),
+                patch("system.interface.shutil.which", return_value=executable),
+                patch("system.interface.subprocess.run", return_value=response) as run,
             ):
                 state = Path(directory) / "state.json"
                 prepare_interface("wlan0", state)
@@ -107,10 +107,10 @@ class InterfaceControlTests(unittest.TestCase):
     def test_partial_startup_and_failed_restore_preserve_recovery_state(self) -> None:
         with (
             tempfile.TemporaryDirectory() as directory,
-            patch("interface_control.os.geteuid", return_value=0),
-            patch("interface_control.shutil.which", return_value="nmcli"),
+            patch("system.interface.os.geteuid", return_value=0),
+            patch("system.interface.shutil.which", return_value="nmcli"),
             patch(
-                "interface_control.subprocess.run",
+                "system.interface.subprocess.run",
                 side_effect=[
                     result("yes\n"),
                     result(code=1),
@@ -133,10 +133,10 @@ class InterfaceControlTests(unittest.TestCase):
     def test_stale_state_restored_before_new_baseline(self) -> None:
         with (
             tempfile.TemporaryDirectory() as directory,
-            patch("interface_control.os.geteuid", return_value=0),
-            patch("interface_control.shutil.which", return_value="nmcli"),
+            patch("system.interface.os.geteuid", return_value=0),
+            patch("system.interface.shutil.which", return_value="nmcli"),
             patch(
-                "interface_control.subprocess.run",
+                "system.interface.subprocess.run",
                 side_effect=[
                     result(),
                     result("yes\n"),
@@ -157,10 +157,10 @@ class InterfaceControlTests(unittest.TestCase):
     def test_failed_query_does_not_change_interface(self) -> None:
         with (
             tempfile.TemporaryDirectory() as directory,
-            patch("interface_control.os.geteuid", return_value=0),
-            patch("interface_control.shutil.which", return_value="nmcli"),
+            patch("system.interface.os.geteuid", return_value=0),
+            patch("system.interface.shutil.which", return_value="nmcli"),
             patch(
-                "interface_control.subprocess.run", return_value=result(code=1)
+                "system.interface.subprocess.run", return_value=result(code=1)
             ) as run,
         ):
             state = Path(directory) / "state.json"
@@ -172,9 +172,9 @@ class InterfaceControlTests(unittest.TestCase):
     def test_restore_verifies_management_and_retains_state_on_failure(self) -> None:
         with (
             tempfile.TemporaryDirectory() as directory,
-            patch("interface_control.os.geteuid", return_value=0),
+            patch("system.interface.os.geteuid", return_value=0),
             patch(
-                "interface_control.subprocess.run",
+                "system.interface.subprocess.run",
                 side_effect=[result(), result("no\n")],
             ),
         ):

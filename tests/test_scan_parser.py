@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 import unittest
 
+from collection.parser import parse_scan
 from model import ScanError
-from scan_parser import parse_scan
 
 
 def bss(
@@ -60,12 +60,12 @@ class ParserTests(unittest.TestCase):
             for output in (invalid + valid, valid + invalid):
                 with (
                     self.subTest(frequency=frequency, output=output),
-                    self.assertLogs("scan_parser", level="WARNING"),
+                    self.assertLogs("collection.parser", level="WARNING"),
                 ):
                     items = parse_scan(output)
                     self.assertEqual(len(items), 1)
                     self.assertEqual(items[0].bssid, "aa:bb:cc:dd:ee:01")
-            with self.assertLogs("scan_parser", level="WARNING"):
+            with self.assertLogs("collection.parser", level="WARNING"):
                 self.assertEqual(parse_scan(invalid), ())
 
     def test_security_and_missing_optional_fields(self) -> None:

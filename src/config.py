@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
-from storage import Layout
+from storage.database import Layout
 
 DEFAULT_CONFIG = Path("/etc/survey-802.11/survey-802.11.toml")
 DEFAULT_DATABASE = Path("/var/lib/survey-802.11/survey-802.11.db")
