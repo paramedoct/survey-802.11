@@ -14,12 +14,12 @@ from unittest.mock import patch
 from backup import send_backup
 from commands import main
 from config import AppConfig, ConfigError, load_config
-from history import query_history, summarize
+from history import summarize
 from model import Observation
 from monthly_storage import MonthlyStorage
 from reporting import _disk_status
 from runtime import Collector
-from tests.helpers import sample_scan
+from tests.helpers import observation_history, sample_scan
 
 
 class StoppingScanner:
@@ -48,11 +48,11 @@ class MonthlyCommandTests(unittest.TestCase):
                 )
             output = io.StringIO()
             with redirect_stdout(output):
-                result = main(["history", "--config", str(config), "--limit", "1"])
+                result = main(["history", "--config", str(config)])
             self.assertEqual(result, 0)
-            self.assertEqual(
-                json.loads(output.getvalue())[0]["ssid_bytes"], {"hex": "ff"}
-            )
+            self.assertIn("UPDATED AT (UTC)", output.getvalue())
+            self.assertIn("2026-10-03 01:00:00+00:00", output.getvalue())
+            self.assertIn("<hex:ff>", output.getvalue())
             config.write_text(
                 f'version = 1\n[database]\nlayout = "invalid"\npath = "{root}"\n'
             )
@@ -89,7 +89,7 @@ class MonthlyCommandTests(unittest.TestCase):
             root = Path(directory) / "monthly"
             with MonthlyStorage(root) as store:
                 store.save(sample_scan())
-            expected = query_history(root, "monthly")
+            expected = observation_history(root, "monthly")
             sent: list[Path] = []
 
             def transfer(
@@ -102,7 +102,7 @@ class MonthlyCommandTests(unittest.TestCase):
                 with tarfile.open(archive, "r:") as package:
                     package.extractall(restored, filter="data")
                 self.assertEqual(
-                    query_history(restored / root.name, "monthly"), expected
+                    observation_history(restored / root.name, "monthly"), expected
                 )
                 return subprocess.CompletedProcess(arguments, 0)
 
@@ -113,4 +113,4 @@ class MonthlyCommandTests(unittest.TestCase):
                 self.assertEqual(send_backup(root, layout="monthly"), 0)
             self.assertEqual(len(sent), 1)
             self.assertFalse(sent[0].exists())
-            self.assertEqual(query_history(root, "monthly"), expected)
+            self.assertEqual(observation_history(root, "monthly"), expected)

@@ -13,11 +13,11 @@ from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
-from history import query_history, summarize
+from history import summarize
 from model import Observation
 from monthly_backup import snapshot_monthly
 from monthly_storage import MonthlyStorage, connect_readonly, month_of, read_manifest
-from tests.helpers import sample_scan
+from tests.helpers import observation_history, sample_scan
 
 
 class MonthlyStorageTests(unittest.TestCase):
@@ -41,12 +41,13 @@ class MonthlyStorageTests(unittest.TestCase):
             with MonthlyStorage(root) as store:
                 self.assertEqual(store.save(scan), 4)
             self.assertEqual(
-                [row["id"] for row in query_history(root, "monthly")], [4, 3, 2, 1]
+                [row["id"] for row in observation_history(root, "monthly")],
+                [4, 3, 2, 1],
             )
             self.assertEqual(summarize(root, "monthly")["successful_scans"], 4)
             self.assertEqual(month_of("2026-02-01T00:30:00+01:00"), "2026-01")
 
-    def test_null_empty_bytes_security_and_pagination(self) -> None:
+    def test_null_empty_bytes_security_and_failed_scans(self) -> None:
         items = (
             Observation("aa:bb:cc:dd:ee:ff", 2412),
             Observation("aa:bb:cc:dd:ee:ff", 2437, b"", "", None, None, "null"),
@@ -66,19 +67,18 @@ class MonthlyStorageTests(unittest.TestCase):
                 store.save(sample_scan(*items))
                 store.save(replace(sample_scan(), status="timeout", error=""))
                 store.save(sample_scan(*items))
-            newest = query_history(root, "monthly", limit=1)
+            rows = observation_history(root, "monthly")
+            newest = [row for row in rows if row["id"] == 3]
             self.assertEqual(len(newest), 3)
             self.assertEqual(
                 [row["ssid_bytes"] for row in newest], [None, b"", b"\x00\xff"]
             )
-            older = query_history(root, "monthly", before_id=3, limit=1)
+            older = [row for row in rows if row["id"] == 2]
             self.assertEqual(
                 [(row["id"], row["error"], row["bssid"]) for row in older],
                 [(2, "", None)],
             )
-            self.assertEqual(
-                len(query_history(root, "monthly", scan_id=1, bssid=items[0].bssid)), 3
-            )
+            self.assertEqual(len([row for row in rows if row["id"] == 1]), 3)
 
     def test_missing_and_duplicate_history_fail(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -142,7 +142,7 @@ class MonthlyStorageTests(unittest.TestCase):
                 february = replace(january, started_at="2026-02-01T00:00:00Z")
                 store.save(january)
                 store.save(february)
-                expected = query_history(root, "monthly")
+                expected = observation_history(root, "monthly")
                 appended = False
 
                 def concurrent_read(path: Path) -> sqlite3.Connection:
@@ -165,9 +165,9 @@ class MonthlyStorageTests(unittest.TestCase):
                     snapshot_monthly(root, backup)
             self.assertEqual(read_manifest(backup)["months"], ["2026-01", "2026-02"])
             self.assertEqual(
-                [row["id"] for row in query_history(backup, "monthly")], [2, 1]
+                [row["id"] for row in observation_history(backup, "monthly")], [2, 1]
             )
-            self.assertEqual(query_history(backup, "monthly"), expected)
+            self.assertEqual(observation_history(backup, "monthly"), expected)
             self.assertEqual(summarize(root, "monthly")["successful_scans"], 5)
             metadata = json.loads((backup / "backup.json").read_text())
             self.assertEqual(metadata["high_water_scan_id"], 2)

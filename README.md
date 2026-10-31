@@ -136,7 +136,7 @@ scans and observations indefinitely.
 | `validate` | Validate configuration without accessing wireless hardware |
 | `status` | Show service state, runtime state, durable history, file sizes and free space |
 | `backup` | Create a consistent database snapshot and send it with `sz` |
-| `history` | Query retained scans and observations across one or more monthly files |
+| `history` | List observed SSIDs by their latest observation time |
 | `diagnose` | Check tools, root access, device, rfkill, storage and an actual active scan |
 | `start` / `stop` / `restart` | Manage the systemd service |
 | `enable` / `disable` | Enable and start, or disable and stop, the service |
@@ -280,11 +280,23 @@ ORDER BY o.bssid, o.frequency_mhz;
 The left join preserves empty successes and failures. To query another round,
 replace the subquery with its integer identifier.
 
-The `history` command queries either layout and prints JSON, newest scan first.
-Use `--bssid ADDRESS`, `--scan-id ID`, `--before-id ID` and `--limit N` to filter
-or page results. The default limit is 100 scans and the maximum is 10,000.
-For pagination, pass the smallest returned scan ID as `--before-id`. Raw SSID
-bytes appear as a hexadecimal object in JSON.
+The `history` command lists all distinct observed SSIDs in a terminal table,
+newest update first, with the SSID and its latest observation date and time in
+UTC. It supports both layouts and combines matching raw SSID bytes across
+addresses, frequencies and month files. The update time is the latest scan start
+timestamp, compared with timezone offsets taken into account. Failed or empty
+scans do not update names. Names that have stopped appearing remain in the list.
+
+```bash
+sudo survey-802.11 history
+sudo survey-802.11 history --config /path/to/config.toml
+```
+
+Names are quoted, control characters are escaped, and non-UTF-8 names use a
+`<hex:...>` label. Empty names appear as `"" (hidden)` and missing names as
+`<unknown>`, each grouped into one row. An empty collection prints
+`No SSIDs observed.` The former scan filters, pagination and JSON output have
+been removed. Direct SQL remains available for individual observation queries.
 
 ## Backup
 

@@ -15,7 +15,7 @@ import control
 from backup import send_backup
 from config import DEFAULT_CONFIG, DEFAULT_STATUS, ConfigError, load_config
 from diagnostics import diagnose
-from history import query_history
+from history import list_ssids
 from interface_control import prepare_interface, restore_interface
 from reporting import show_status
 from runtime import Collector, shutdown_signals
@@ -36,10 +36,11 @@ def _parser() -> argparse.ArgumentParser:
     ):
         command = subparsers.add_parser(name)
         command.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    subparsers.choices["history"].add_argument("--bssid")
-    subparsers.choices["history"].add_argument("--scan-id", type=int)
-    subparsers.choices["history"].add_argument("--before-id", type=int)
-    subparsers.choices["history"].add_argument("--limit", type=int, default=100)
+    subparsers.choices[
+        "history"
+    ].description = (
+        "List observed SSIDs by latest observation time, newest first (UTC)."
+    )
     subparsers.add_parser("restore-interface")
     for name in ("start", "stop", "restart", "enable", "disable"):
         subparsers.add_parser(name)
@@ -49,6 +50,21 @@ def _parser() -> argparse.ArgumentParser:
         )
     subparsers.choices["status"].add_argument("--json", action="store_true")
     return parser
+
+
+def _ssid_label(raw: bytes | None) -> str:
+    if raw is None:
+        return "<unknown>"
+    if not raw:
+        return '"" (hidden)'
+    try:
+        label = json.dumps(raw.decode("utf-8"), ensure_ascii=False)
+    except UnicodeDecodeError:
+        return f"<hex:{raw.hex()}>"
+    return "".join(
+        char if char.isprintable() else char.encode("unicode_escape").decode("ascii")
+        for char in label
+    )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -70,20 +86,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return send_backup(config.database_path, layout="monthly")
             return send_backup(config.database_path)
         if arguments.command == "history":
-            rows = query_history(
-                config.database_path,
-                config.database_layout,
-                bssid=arguments.bssid,
-                scan_id=arguments.scan_id,
-                before_id=arguments.before_id,
-                limit=arguments.limit,
-            )
-            for row in rows:
-                raw = row.get("ssid_bytes")
-                row["ssid_bytes"] = (
-                    {"hex": raw.hex()} if isinstance(raw, bytes) else None
-                )
-            print(json.dumps(rows, sort_keys=True))
+            rows = list_ssids(config.database_path, config.database_layout)
+            if not rows:
+                print("No SSIDs observed.")
+                return 0
+            dates = [row.updated_at.isoformat(sep=" ") for row in rows]
+            width = max(len("UPDATED AT (UTC)"), *(len(date) for date in dates))
+            print(f"{'UPDATED AT (UTC)':<{width}}  SSID")
+            for row, date in zip(rows, dates, strict=True):
+                print(f"{date:<{width}}  {_ssid_label(row.ssid_bytes)}")
             return 0
         if arguments.command == "prepare-interface":
             prepare_interface(config.device)

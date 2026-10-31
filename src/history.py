@@ -1,11 +1,12 @@
-"""Bounded cross-month history queries and complete retained-history summaries."""
+"""Observed SSID lists and complete retained-history summaries."""
 
 from __future__ import annotations
 
-import heapq
-import sqlite3
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
@@ -32,80 +33,43 @@ def sources(path: Path, layout: Layout) -> Iterator[tuple[list[Path], int, str |
         yield [path], cutoff, None
 
 
-def query_history(
-    path: Path,
-    layout: Layout = "single",
-    *,
-    bssid: str | None = None,
-    scan_id: int | None = None,
-    before_id: int | None = None,
-    limit: int = 100,
-) -> list[dict[str, object]]:
-    """Return the newest complete scans, with all their observations.
+@dataclass(frozen=True)
+class SsidSummary:
+    ssid_bytes: bytes | None
+    updated_at: datetime
 
-    The limit counts scans, not observations, so before_id pagination cannot
-    discard observations from a partially returned scan.
-    """
-    if not 1 <= limit <= 10000:
-        raise ValueError("history limit must be between 1 and 10000 scans")
+
+def list_ssids(path: Path, layout: Layout = "single") -> list[SsidSummary]:
+    """List every distinct raw SSID by its latest observation time in UTC."""
+
+    @lru_cache(maxsize=1024)
+    def utc_timestamp(value: str) -> str:
+        stamp = datetime.fromisoformat(value)
+        if stamp.utcoffset() is None:
+            raise ValueError("observation timestamps require a timezone")
+        return stamp.astimezone(UTC).isoformat(timespec="microseconds")
+
+    latest: dict[bytes | None, datetime] = {}
     with sources(path, layout) as (paths, cutoff, _):
-        candidates: list[int] = []
-        filters = ["s.id <= ?"]
-        values: list[object] = [cutoff]
-        if scan_id is not None:
-            filters.append("s.id = ?")
-            values.append(scan_id)
-        if before_id is not None:
-            filters.append("s.id < ?")
-            values.append(before_id)
-        if bssid is not None:
-            filters.append(
-                "EXISTS (SELECT 1 FROM observation o "
-                "WHERE o.scan_id = s.id AND o.bssid = ?)"
-            )
-            values.append(bssid)
-        where = " AND ".join(filters)
         for source in paths:
             with closing(connect_readonly(source)) as reader:
-                for (identifier,) in reader.execute(
-                    f"SELECT s.id FROM scan s WHERE {where} ORDER BY s.id DESC LIMIT ?",
-                    [*values, limit],
+                reader.create_function("utc_timestamp", 1, utc_timestamp)
+                for raw, value in reader.execute(
+                    "SELECT n.ssid_bytes, max(utc_timestamp(s.started_at)) "
+                    "FROM observation_record r "
+                    "JOIN scan s ON s.id = r.scan_id "
+                    "JOIN observation_profile p ON p.id = r.profile_id "
+                    "JOIN network_name n ON n.id = p.name_id "
+                    "WHERE s.id <= ? GROUP BY n.ssid_bytes",
+                    (cutoff,),
                 ):
-                    heapq.heappush(candidates, identifier)
-                    if len(candidates) > limit:
-                        heapq.heappop(candidates)
-        if not candidates:
-            return []
-        if len(set(candidates)) != len(candidates):
-            raise RuntimeError("duplicate global scan identifier")
-        minimum = min(candidates)
-        rows: list[dict[str, object]] = []
-        for source in paths:
-            with closing(connect_readonly(source)) as reader:
-                reader.row_factory = sqlite3.Row
-                observation_filter = " AND o.bssid = ?" if bssid is not None else ""
-                query_values = [*values, minimum]
-                if bssid is not None:
-                    query_values.append(bssid)
-                rows.extend(
-                    dict(row)
-                    for row in reader.execute(
-                        "SELECT s.*, o.bssid, o.frequency_mhz, o.ssid_bytes, "
-                        "o.ssid_display, o.signal_dbm, o.channel, o.security_json "
-                        "FROM scan s LEFT JOIN observation o ON o.scan_id = s.id "
-                        f"WHERE {where} AND s.id >= ?{observation_filter} "
-                        "ORDER BY s.id DESC, o.bssid, o.frequency_mhz",
-                        query_values,
-                    )
-                )
-        rows.sort(
-            key=lambda row: (
-                -int(str(row["id"])),
-                str(row["bssid"]),
-                int(str(row["frequency_mhz"] or 0)),
-            )
-        )
-        return rows
+                    stamp = datetime.fromisoformat(value)
+                    if raw not in latest or stamp > latest[raw]:
+                        latest[raw] = stamp
+    rows = [SsidSummary(raw, stamp) for raw, stamp in latest.items()]
+    rows.sort(key=lambda row: (row.ssid_bytes is not None, row.ssid_bytes or b""))
+    rows.sort(key=lambda row: row.updated_at, reverse=True)
+    return rows
 
 
 def summarize(path: Path, layout: Layout = "single") -> dict[str, object]:
