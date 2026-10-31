@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sqlite3
 import subprocess
@@ -56,9 +55,9 @@ def _ssid_label(raw: bytes | None) -> str:
     if raw is None:
         return "<unknown>"
     if not raw:
-        return '"" (hidden)'
+        return "<hidden>"
     try:
-        label = json.dumps(raw.decode("utf-8"), ensure_ascii=False)
+        label = raw.decode("utf-8")
     except UnicodeDecodeError:
         return f"<hex:{raw.hex()}>"
     return "".join(

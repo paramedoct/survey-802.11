@@ -143,10 +143,11 @@ class HistoryTests(unittest.TestCase):
             self.assertTrue(
                 all("2026-10-03 01:00:00+00:00" in line for line in lines[1:])
             )
-            self.assertIn('"Cafe"', output.getvalue())
-            self.assertIn(r'"line\n\u001b[31m"', output.getvalue())
+            self.assertTrue(any(line.endswith("  Cafe") for line in lines))
+            self.assertNotIn('"Cafe"', output.getvalue())
+            self.assertIn(r"line\n\x1b[31m", output.getvalue())
             self.assertIn("<hex:ff>", output.getvalue())
-            self.assertIn('"" (hidden)', output.getvalue())
+            self.assertIn("<hidden>", output.getvalue())
             self.assertIn("<unknown>", output.getvalue())
             self.assertNotIn("\x1b", output.getvalue())
 

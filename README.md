@@ -292,9 +292,9 @@ sudo survey-802.11 history
 sudo survey-802.11 history --config /path/to/config.toml
 ```
 
-Names are quoted, control characters are escaped, and non-UTF-8 names use a
-`<hex:...>` label. Empty names appear as `"" (hidden)` and missing names as
-`<unknown>`, each grouped into one row. An empty collection prints
+Names are printed without surrounding quotes, control characters are escaped,
+and non-UTF-8 names use a `<hex:...>` label. Empty names appear as `<hidden>`
+and missing names as `<unknown>`, each grouped into one row. An empty collection prints
 `No SSIDs observed.` The former scan filters, pagination and JSON output have
 been removed. Direct SQL remains available for individual observation queries.
 
