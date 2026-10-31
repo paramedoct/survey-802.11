@@ -15,7 +15,7 @@ from typing import Protocol
 from config import AppConfig
 from model import Observation, Scan, ScanError, ScanStatus
 from monthly_storage import MonthlyStorage
-from reporting import write_status as write_status
+from reporting import write_status
 from scanner import Scanner
 from storage import Storage
 from storage_metrics import StorageMetrics

@@ -8,10 +8,8 @@ from contextlib import suppress
 from threading import Event
 from typing import Protocol
 
-from model import Observation
-from model import ScanError as ScanError
-from scan_parser import channel_for_frequency as channel_for_frequency
-from scan_parser import parse_scan as parse_scan
+from model import Observation, ScanError
+from scan_parser import parse_scan
 
 
 class Scanner(Protocol):

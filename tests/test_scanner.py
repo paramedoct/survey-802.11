@@ -8,7 +8,8 @@ from pathlib import Path
 from threading import Event, Timer
 from unittest.mock import patch
 
-from scanner import IwScanner, ScanError, run_command
+from model import ScanError
+from scanner import IwScanner, run_command
 
 
 class ProcessTests(unittest.TestCase):
