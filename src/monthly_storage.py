@@ -302,7 +302,7 @@ class MonthlyStorage:
         write_manifest(self.root, updated)
         self.manifest = updated
 
-    def save(self, scan: Scan, *, scan_id: int | None = None) -> int:
+    def save(self, scan: Scan) -> int:
         month = month_of(scan.started_at)
         with (
             file_lock(self.root / ".maintenance.lock", exclusive=False),
@@ -313,12 +313,9 @@ class MonthlyStorage:
                 raise RuntimeError("monthly manifest changed during collection")
             if month not in self.manifest["months"]:
                 self._create_month(month)
-            identifier = self.next_id if scan_id is None else scan_id
-            if identifier < self.next_id:
-                raise ValueError("global scan identifiers must increase")
             with Storage(self.root / f"{month}.db") as store:
                 check_identity(store.connection, self.manifest, month)
-                saved = store.save(scan, scan_id=identifier)
+                saved = store.save(scan, scan_id=self.next_id)
             self.next_id = saved + 1
             self.metrics["last_scan_id"] = saved
             self.metrics["retained_observations"] = cast(

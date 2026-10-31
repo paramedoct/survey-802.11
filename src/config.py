@@ -18,7 +18,6 @@ class ConfigError(ValueError):
 
 @dataclass(frozen=True)
 class AppConfig:
-    version: int = 1
     device: str = "wlan0"
     interval_s: int = 60
     timeout_s: int = 20
@@ -82,4 +81,10 @@ def load_config(path: Path) -> AppConfig:
         or (layout == "monthly" and not target.is_dir())
     ):
         raise ConfigError("database path does not match the selected layout")
-    return AppConfig(1, device, interval, timeout, target, layout)
+    return AppConfig(
+        device=device,
+        interval_s=interval,
+        timeout_s=timeout,
+        database_path=target,
+        database_layout=layout,
+    )
