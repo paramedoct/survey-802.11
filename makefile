@@ -7,7 +7,7 @@ ROOT_DIR := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 DESTDIR ?=
 export DESTDIR
 
-.PHONY: all clean setup
+.PHONY: all clean
 
 all:
 	@if [ "$$(id -u)" -ne 0 ]; then
@@ -17,20 +17,7 @@ all:
 	  ''|/*) ;;
 	  *) echo "DESTDIR must be empty or absolute" >&2; exit 1 ;;
 	esac
-	for tool in python3 iw ip systemctl install; do
-	  if ! command -v "$$tool" >/dev/null 2>&1; then
-	    echo "$$tool is required; run ./3rdparty/setup-debian.sh" >&2
-	    exit 1
-	  fi
-	done
-	if ! python3 -c 'import sys; raise SystemExit(sys.version_info < (3, 13))'; then
-	  echo "Python 3.13 or newer is required" >&2
-	  exit 1
-	fi
-	if ! python3 -c 'import ensurepip, setuptools'; then
-	  echo "python3-venv and python3-setuptools are required" >&2
-	  exit 1
-	fi
+	"$(ROOT_DIR)/3rdparty/setup-debian.sh"
 	was_active=false
 	if systemctl is-active --quiet survey-802.11.service; then
 	  was_active=true
@@ -73,6 +60,3 @@ clean:
 	rm -rf "$(DESTDIR)/opt/survey-802.11"
 	systemctl daemon-reload
 	echo "removed application; /etc/survey-802.11 and /var/lib/survey-802.11 were preserved"
-
-setup:
-	@"$(ROOT_DIR)/3rdparty/setup-debian.sh"

@@ -10,7 +10,7 @@ from tests.helpers import executable
 
 
 class InstallationTests(unittest.TestCase):
-    def test_install_upgrade_and_remove_preserve_configuration_and_data(self) -> None:
+    def test_dependencies_install_upgrade_and_remove_preserve_data(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             commands = root / "bin"
@@ -25,6 +25,14 @@ class InstallationTests(unittest.TestCase):
                 SURVEY_TEST_ACTIVE="0",
             )
             executable(commands / "id", "#!/bin/bash\necho 0\n")
+            executable(commands / "sudo", '#!/bin/bash\nexec "$@"\n')
+            executable(
+                commands / "apt",
+                """#!/bin/bash
+echo "apt $*" >> "$SURVEY_TEST_LOG"
+exit "${SURVEY_TEST_APT_FAIL:-0}"
+""",
+            )
             executable(
                 commands / "systemctl",
                 """#!/bin/bash
@@ -34,8 +42,6 @@ if [ "$1" = is-active ]; then
 fi
 """,
             )
-            executable(commands / "iw", "#!/bin/bash\nexit 0\n")
-            executable(commands / "ip", "#!/bin/bash\nexit 0\n")
             executable(
                 commands / "python3",
                 """#!/bin/bash
@@ -65,6 +71,15 @@ fi
                 Path("config/survey-802.11.example.toml").read_bytes(),
             )
             history = log.read_text()
+            self.assertIn(
+                "apt install iproute2 iw lrzsz make python3 "
+                "python3-setuptools python3-venv",
+                history,
+            )
+            self.assertLess(history.index("apt update"), history.index("apt install"))
+            self.assertLess(
+                history.index("apt install"), history.index("python3 -m venv")
+            )
             self.assertNotIn("systemctl start", history)
             self.assertNotIn("systemctl enable", history)
             self.assertNotIn("systemctl stop", history)
@@ -89,6 +104,17 @@ fi
             self.assertIn(
                 "systemctl disable --now survey-802.11.service", log.read_text()
             )
+            history = log.read_text()
+            self.assertEqual(history.count("apt update"), 2)
+            environment["SURVEY_TEST_APT_FAIL"] = "1"
+            result = subprocess.run(
+                ["make"], env=environment, capture_output=True, text=True, check=False
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(log.read_text()[len(history) :], "apt update\n")
+            self.assertFalse(service.exists())
+            self.assertEqual(installed_config.read_text(), "custom configuration\n")
+            self.assertEqual(data.read_bytes(), b"retained database")
 
     def test_service_capabilities_and_write_boundaries(self) -> None:
         service = Path("systemd/survey-802.11.service").read_text()
