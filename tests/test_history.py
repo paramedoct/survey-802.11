@@ -11,10 +11,9 @@ from pathlib import Path
 from unittest.mock import patch
 
 from commands import main
-from history import Layout, list_ssids
+from history import list_ssids
 from model import Observation
-from monthly_storage import MonthlyStorage, connect_readonly
-from storage import Storage
+from storage import Layout, MonthlyStorage, Storage, connect_readonly, open_storage
 from tests.helpers import sample_scan
 
 
@@ -27,7 +26,6 @@ class HistoryTests(unittest.TestCase):
                 tempfile.TemporaryDirectory() as directory,
             ):
                 path = Path(directory) / "history"
-                factory = MonthlyStorage if layout == "monthly" else Storage
                 alpha = Observation("aa:bb:cc:dd:ee:ff", 2412, b"alpha", "alpha")
                 beta = replace(
                     alpha,
@@ -35,7 +33,7 @@ class HistoryTests(unittest.TestCase):
                     ssid_bytes=b"beta",
                     ssid_display="beta",
                 )
-                with factory(path) as store:
+                with open_storage(path, layout) as store:
                     for stamp, observations in (
                         ("2026-01-01T00:00:00Z", (alpha, beta)),
                         (

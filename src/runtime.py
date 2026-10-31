@@ -14,10 +14,9 @@ from typing import Protocol
 
 from config import AppConfig
 from model import Observation, Scan, ScanError, ScanStatus
-from monthly_storage import MonthlyStorage
 from reporting import write_status
 from scanner import Scanner
-from storage import Storage
+from storage import Storage, open_storage
 from storage_metrics import StorageMetrics
 
 _LOG = logging.getLogger(__name__)
@@ -156,13 +155,11 @@ class Collector:
         try:
             self._publish()
             self.scanner.prepare(self.stop)
-            storage_type = (
-                MonthlyStorage if self.config.database_layout == "monthly" else Storage
-            )
-            with storage_type(self.config.database_path) as storage:
+            with open_storage(
+                self.config.database_path, self.config.database_layout
+            ) as storage:
                 metrics = None
-                if self.config.database_layout == "single":
-                    assert isinstance(storage, Storage)
+                if isinstance(storage, Storage):
                     metrics = StorageMetrics(
                         storage.connection,
                         self.config.database_path,
@@ -185,8 +182,8 @@ class Collector:
                     self._record_scan(scan)
                     scan_id = storage.save(scan)
                     self._record_commit(scan, scan_id)
-                    if metrics is not None:
-                        assert isinstance(storage, Storage)
+                    if isinstance(storage, Storage):
+                        assert metrics is not None
                         self.state["storage_metrics"] = metrics.record(
                             storage.connection,
                             monotonic_ms=self.clock.monotonic_ms(),
@@ -198,7 +195,6 @@ class Collector:
                             success=scan.status == "success",
                         )
                     else:
-                        assert isinstance(storage, MonthlyStorage)
                         self.state["storage_metrics"] = dict(storage.metrics)
                     deadline += interval_ms
                     now = self.clock.monotonic_ms()

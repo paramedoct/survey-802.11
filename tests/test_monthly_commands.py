@@ -16,9 +16,9 @@ from commands import main
 from config import AppConfig, ConfigError, load_config
 from history import summarize
 from model import Observation
-from monthly_storage import MonthlyStorage
 from reporting import _disk_status
 from runtime import Collector
+from storage import MonthlyStorage
 from tests.helpers import observation_history, sample_scan
 
 

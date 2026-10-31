@@ -8,12 +8,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Literal
 
-from monthly_storage import connect_readonly, history_boundary
-from storage import read_summary
-
-Layout = Literal["single", "monthly"]
+from storage import Layout, connect_readonly, history_boundary, read_summary
 
 
 @contextmanager

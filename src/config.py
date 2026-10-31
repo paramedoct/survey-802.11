@@ -5,7 +5,9 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import cast
+
+from storage import Layout
 
 DEFAULT_CONFIG = Path("/etc/survey-802.11/survey-802.11.toml")
 DEFAULT_DATABASE = Path("/var/lib/survey-802.11/survey-802.11.db")
@@ -22,7 +24,7 @@ class AppConfig:
     interval_s: int = 60
     timeout_s: int = 20
     database_path: Path = DEFAULT_DATABASE
-    database_layout: Literal["single", "monthly"] = "single"
+    database_layout: Layout = "single"
 
 
 def _table(value: object, name: str) -> Mapping[str, object]:
