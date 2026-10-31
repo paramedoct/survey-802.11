@@ -121,10 +121,14 @@ interval must exceed the timeout. Unknown keys, invalid interface names and
 relative database paths are rejected. Configuration changes take effect on
 restart.
 
-Monthly files are optional and retain the same scans and observations
-indefinitely. They make large histories easier to move and back up, without
-reducing total stored data. See [monthly storage](docs/monthly-storage.md) for
-configuration, history queries, conversion, and backup behavior.
+Monthly files are optional for a new collection. Set `layout = "monthly"` and
+set `path` to a dedicated directory in the `[database]` section. Omitting the
+layout keeps a single SQLite file. Each monthly file contains its own schema
+and data; `manifest.json` lists the registered months. Month assignment uses
+the scan start time in UTC. Scans retain collection-wide increasing IDs, even
+when a clock correction sends a later scan to an earlier month. Changing the
+layout setting does not convert an existing collection. Both layouts retain all
+scans and observations indefinitely.
 
 | Command | Behavior |
 | --- | --- |
@@ -146,9 +150,11 @@ Diagnostic scans raise the interface and discard their results. Stop the
 collector before diagnosing to avoid overlapping radio operations.
 
 `status` reports retained observation counts and first/last observation times.
-It estimates remaining storage time only when recent committed data supports a
-stable growth estimate. See [storage monitoring](docs/storage-monitoring.md)
-for the fields and estimate limits.
+For single-file storage, it estimates remaining storage time only after at least
+ten minutes, ten successful scans and 40,960 bytes of measured logical growth.
+The estimate uses recent growth and current free space; stale or insufficient
+measurements are reported as unknown. Monthly storage reports growth estimates
+as unknown. Neither layout deletes data automatically.
 
 ```bash
 sudo survey-802.11 stop
@@ -274,6 +280,12 @@ ORDER BY o.bssid, o.frequency_mhz;
 The left join preserves empty successes and failures. To query another round,
 replace the subquery with its integer identifier.
 
+The `history` command queries either layout and prints JSON, newest scan first.
+Use `--bssid ADDRESS`, `--scan-id ID`, `--before-id ID` and `--limit N` to filter
+or page results. The default limit is 100 scans and the maximum is 10,000.
+For pagination, pass the smallest returned scan ID as `--before-id`. Raw SSID
+bytes appear as a hexadecimal object in JSON.
+
 ## Backup
 
 Run from the repository in a terminal that supports ZMODEM reception:
@@ -302,6 +314,15 @@ To restore, stop collection, preserve the existing database and any `-wal` or
 `-shm` sidecars separately, restore the backup to the configured path with root
 ownership and mode `0640`, and start collection. Never mix an old WAL with a
 restored database.
+
+For monthly storage, `backup` sends a tar archive containing all registered
+monthly files, `manifest.json`, lock files and `backup.json` with checksums and
+the highest included scan ID. It captures a consistent scan boundary while
+collection continues. To restore, stop collection, preserve the complete old
+directory, extract the archive into a new directory, verify checksums and
+database integrity, then point the configuration at that directory. Keep files
+from one archive together; do not mix manifests, month files or WAL files from
+different backups.
 
 ## Development and verification
 
