@@ -20,9 +20,9 @@ dev = ["mypy>=1.19,<2", "ruff>=0.15,<1"]
 package-dir = { "" = "src" }
 py-modules = [
     "backup", "commands", "config", "control", "diagnostics", "model", "reporting",
-    "runtime", "scan_parser", "scanner", "storage", "interface_control", "migration",
+    "runtime", "scan_parser", "scanner", "storage", "interface_control",
     "storage_metrics",
-    "history", "monthly_storage", "monthly_backup", "monthly_migration",
+    "history", "monthly_storage", "monthly_backup",
 ]
 
 [tool.ruff]

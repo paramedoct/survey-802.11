@@ -16,9 +16,7 @@ from unittest.mock import patch
 from history import query_history, summarize
 from model import Observation
 from monthly_backup import snapshot_monthly
-from monthly_migration import migrate_monthly
 from monthly_storage import MonthlyStorage, connect_readonly, month_of, read_manifest
-from storage import Storage
 from tests.helpers import sample_scan
 
 
@@ -178,62 +176,6 @@ class MonthlyStorageTests(unittest.TestCase):
                     hashlib.sha256((backup / name).read_bytes()).hexdigest(), digest
                 )
 
-    def test_migration_is_lossless_and_original_remains(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            original = Path(directory) / "original.db"
-            target = Path(directory) / "monthly"
-            observation = Observation(
-                "aa:bb:cc:dd:ee:ff",
-                2412,
-                b"\xff\x00",
-                "\ufffd\x00",
-                -42.5,
-                None,
-                '{ "x": [] }',
-            )
-            with Storage(original) as store:
-                store.save(
-                    replace(sample_scan(observation), started_at="2026-02-01T00:00:00Z")
-                )
-                store.save(
-                    replace(
-                        sample_scan(),
-                        started_at="2026-01-01T00:00:00Z",
-                        status="failed",
-                        error="",
-                    )
-                )
-            before = original.read_bytes()
-            expected = query_history(original)
-            migrate_monthly(original, target)
-            self.assertEqual(query_history(target, "monthly"), expected)
-            self.assertEqual(original.read_bytes(), before)
-            with MonthlyStorage(target) as store:
-                self.assertEqual(store.save(sample_scan()), 3)
-            with self.assertRaisesRegex(RuntimeError, "already exists"):
-                migrate_monthly(original, target)
-
-    def test_migration_failure_does_not_publish_or_modify_original(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            original = Path(directory) / "original.db"
-            target = Path(directory) / "monthly"
-            with Storage(original) as store:
-                store.save(sample_scan())
-            before = original.read_bytes()
-            with (
-                patch(
-                    "monthly_migration.MonthlyStorage.save",
-                    side_effect=OSError("disk full"),
-                ),
-                self.assertRaisesRegex(
-                    RuntimeError, "source unchanged; staging retained"
-                ),
-            ):
-                migrate_monthly(original, target)
-            self.assertFalse(target.exists())
-            self.assertEqual(original.read_bytes(), before)
-            self.assertTrue(list(Path(directory).glob(".monthly.import-*")))
-
     def test_failed_round_transaction_preserves_next_id(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "monthly"
@@ -255,37 +197,3 @@ class MonthlyStorageTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "timezone-aware"):
                     store.save(replace(sample_scan(), started_at="2026-01-01T00:00:00"))
             self.assertEqual(read_manifest(root)["months"], [])
-
-    def test_killed_migration_keeps_original_and_can_retry(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            source = Path(directory) / "original.db"
-            target = Path(directory) / "monthly"
-            with Storage(source) as store:
-                store.save(sample_scan())
-                store.save(sample_scan())
-            before = source.read_bytes()
-            script = """
-import os
-import sys
-from pathlib import Path
-from monthly_storage import MonthlyStorage
-from monthly_migration import migrate_monthly
-
-save = MonthlyStorage.save
-def interrupted(self, scan, *, scan_id=None):
-    save(self, scan, scan_id=scan_id)
-    os._exit(9)
-MonthlyStorage.save = interrupted
-migrate_monthly(Path(sys.argv[1]), Path(sys.argv[2]))
-"""
-            result = subprocess.run(
-                [sys.executable, "-c", script, str(source), str(target)], check=False
-            )
-            self.assertEqual(result.returncode, 9)
-            self.assertEqual(source.read_bytes(), before)
-            self.assertFalse(target.exists())
-            abandoned = list(Path(directory).glob(".monthly.import-*"))
-            self.assertEqual(len(abandoned), 1)
-            migrate_monthly(source, target)
-            self.assertEqual(query_history(source), query_history(target, "monthly"))
-            self.assertTrue(abandoned[0].exists())

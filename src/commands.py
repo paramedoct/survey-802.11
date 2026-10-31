@@ -17,8 +17,6 @@ from config import DEFAULT_CONFIG, DEFAULT_STATUS, ConfigError, load_config
 from diagnostics import diagnose
 from history import query_history
 from interface_control import prepare_interface, restore_interface
-from migration import migrate
-from monthly_migration import migrate_monthly
 from reporting import show_status
 from runtime import Collector, shutdown_signals
 from scanner import IwScanner
@@ -34,19 +32,10 @@ def _parser() -> argparse.ArgumentParser:
         "diagnose",
         "prepare-interface",
         "backup",
-        "migrate",
-        "migrate-monthly",
         "history",
     ):
         command = subparsers.add_parser(name)
         command.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    subparsers.choices["migrate"].add_argument("--backup", type=Path, required=True)
-    subparsers.choices["migrate"].add_argument(
-        "--minimum-free-bytes", type=int, default=0
-    )
-    subparsers.choices["migrate-monthly"].add_argument(
-        "--destination", type=Path, required=True
-    )
     subparsers.choices["history"].add_argument("--bssid")
     subparsers.choices["history"].add_argument("--scan-id", type=int)
     subparsers.choices["history"].add_argument("--before-id", type=int)
@@ -76,16 +65,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             restore_interface()
             return 0
         config = load_config(arguments.config)
-        if arguments.command == "migrate":
-            migrate(
-                config.database_path, arguments.backup, arguments.minimum_free_bytes
-            )
-            print(f"migration complete; original snapshot: {arguments.backup}")
-            return 0
-        if arguments.command == "migrate-monthly":
-            migrate_monthly(config.database_path, arguments.destination)
-            print(f"monthly migration complete: {arguments.destination}")
-            return 0
         if arguments.command == "backup":
             if config.database_layout == "monthly":
                 return send_backup(config.database_path, layout="monthly")

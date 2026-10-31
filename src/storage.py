@@ -160,7 +160,7 @@ def read_summary(path: Path) -> dict[str, object]:
         sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True)
     ) as connection:
         version = connection.execute("PRAGMA user_version").fetchone()[0]
-        if version not in {1, 2, SCHEMA_VERSION}:
+        if version != SCHEMA_VERSION:
             raise RuntimeError(f"unsupported database schema version: {version}")
         counts = dict(
             connection.execute("SELECT status, count(*) FROM scan GROUP BY status")
@@ -201,11 +201,6 @@ class Storage:
             try:
                 self.connection.execute("PRAGMA foreign_keys = ON")
                 version = self.connection.execute("PRAGMA user_version").fetchone()[0]
-                if version in {1, 2}:
-                    raise RuntimeError(
-                        "database migration required; stop collection and run "
-                        "survey-802.11 migrate --backup PATH"
-                    )
                 if version not in {0, SCHEMA_VERSION}:
                     raise RuntimeError(
                         f"unsupported database schema version: {version}"

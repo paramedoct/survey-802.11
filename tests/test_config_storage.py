@@ -9,7 +9,7 @@ from pathlib import Path
 
 from config import AppConfig, ConfigError, load_config
 from model import Observation
-from storage import Storage
+from storage import Storage, read_summary
 from tests.helpers import sample_scan
 
 
@@ -88,14 +88,20 @@ class StorageTests(unittest.TestCase):
                     [("success",), ("success",), ("failed",), ("success",)],
                 )
 
-    def test_legacy_requires_explicit_migration(self) -> None:
+    def test_legacy_schema_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "history.db"
             for version in (1, 2):
                 with closing(sqlite3.connect(path)) as connection:
                     connection.execute(f"PRAGMA user_version = {version}")
-                with self.assertRaisesRegex(RuntimeError, "migration required"):
+                with self.assertRaisesRegex(
+                    RuntimeError, "unsupported database schema"
+                ):
                     Storage(path)
+                with self.assertRaisesRegex(
+                    RuntimeError, "unsupported database schema"
+                ):
+                    read_summary(path)
 
     def test_rollback_on_invalid_observation_and_disk_full(self) -> None:
         with (
