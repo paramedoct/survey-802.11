@@ -8,7 +8,8 @@ from dataclasses import replace
 from pathlib import Path
 
 from model import Observation, Scan
-from storage.database import Storage, read_summary
+from storage.database import Storage
+from storage.history import summarize
 from tests.helpers import sample_scan
 
 
@@ -75,8 +76,8 @@ class NormalizationTests(unittest.TestCase):
                 for scan in scans[5:]:
                     storage.save(scan)
                 self.assertEqual(rows(storage.connection), expected)
-                self.assertEqual(read_summary(path)["successful_scans"], len(scans) - 3)
-                self.assertEqual(read_summary(path)["failed_scans"], 3)
+                self.assertEqual(summarize(path)["successful_scans"], len(scans) - 3)
+                self.assertEqual(summarize(path)["failed_scans"], 3)
                 self.assertEqual(
                     storage.connection.execute(
                         "SELECT count(*) FROM network_name"

@@ -32,14 +32,15 @@ def send_backup(database_path: Path, *, layout: Layout = "single") -> int:
             archive = Path(directory) / f"{database_path.name}.tar"
             with tarfile.open(archive, "w:") as package:
                 package.add(snapshot, arcname=database_path.name)
-            return subprocess.run([sender, str(archive)], check=False).returncode
-        # Read-only mode refuses a missing source and includes committed WAL data.
-        with (
-            closing(connect_readonly(database_path)) as source,
-            closing(sqlite3.connect(snapshot)) as destination,
-        ):
-            source.backup(destination, pages=256)
-            destination.execute("PRAGMA journal_mode = DELETE")
+            snapshot = archive
+        else:
+            # Read-only mode refuses a missing source and includes committed WAL data.
+            with (
+                closing(connect_readonly(database_path)) as source,
+                closing(sqlite3.connect(snapshot)) as destination,
+            ):
+                source.backup(destination, pages=256)
+                destination.execute("PRAGMA journal_mode = DELETE")
         # Inherit the terminal for the ZMODEM protocol and receiver interaction.
         return subprocess.run([sender, str(snapshot)], check=False).returncode
 

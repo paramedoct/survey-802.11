@@ -52,7 +52,7 @@ class DiagnosticsTests(unittest.TestCase):
                         return_value=(failure != "rfkill", "radio state"),
                     ),
                     patch(
-                        "system.diagnostics.read_summary",
+                        "system.diagnostics.summarize",
                         return_value={"available": True},
                     ),
                     patch("system.diagnostics.os.access", return_value=True),
@@ -116,7 +116,7 @@ class DiagnosticsTests(unittest.TestCase):
                         return_value=(True, "unblocked"),
                     ),
                     patch(
-                        "system.diagnostics.read_summary",
+                        "system.diagnostics.summarize",
                         return_value={"available": True},
                     ),
                     patch("system.diagnostics.os.access", return_value=True),

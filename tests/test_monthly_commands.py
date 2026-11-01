@@ -104,13 +104,15 @@ class MonthlyCommandTests(unittest.TestCase):
                 self.assertEqual(
                     observation_history(restored / root.name, "monthly"), expected
                 )
-                return subprocess.CompletedProcess(arguments, 0)
+                return subprocess.CompletedProcess(arguments, returncode)
 
-            with (
-                patch("storage.backup.shutil.which", return_value="/usr/bin/sz"),
-                patch("storage.backup.subprocess.run", side_effect=transfer),
-            ):
-                self.assertEqual(send_backup(root, layout="monthly"), 0)
-            self.assertEqual(len(sent), 1)
-            self.assertFalse(sent[0].exists())
+            for returncode in (0, 7):
+                with (
+                    self.subTest(returncode=returncode),
+                    patch("storage.backup.shutil.which", return_value="/usr/bin/sz"),
+                    patch("storage.backup.subprocess.run", side_effect=transfer),
+                ):
+                    self.assertEqual(send_backup(root, layout="monthly"), returncode)
+                    self.assertFalse(sent[-1].exists())
+            self.assertEqual(len(sent), 2)
             self.assertEqual(observation_history(root, "monthly"), expected)

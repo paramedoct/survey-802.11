@@ -11,7 +11,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from commands import main
-from model import Observation
+from model import Observation, ScanStatus
 from storage.database import (
     Layout,
     MonthlyStorage,
@@ -19,11 +19,102 @@ from storage.database import (
     connect_readonly,
     open_storage,
 )
-from storage.history import list_ssids
+from storage.history import list_ssids, summarize
 from tests.helpers import sample_scan
 
 
 class HistoryTests(unittest.TestCase):
+    def test_summary_contract_matches_across_layouts(self) -> None:
+        layouts: tuple[Layout, ...] = ("single", "monthly")
+        for layout in layouts:
+            with (
+                self.subTest(layout=layout),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                path = Path(directory) / "history"
+                self.assertEqual(summarize(path, layout), {"available": False})
+                self.assertFalse(path.exists())
+                with open_storage(path, layout) as store:
+                    empty = summarize(path, layout)
+                    self.assertEqual(empty["counts_by_status"], {})
+                    self.assertIsNone(empty["last_scan_id"])
+                    self.assertIsNone(empty["last_error"])
+                    # Scan IDs determine the latest result after clock reversal.
+                    statuses: tuple[ScanStatus, ...] = (
+                        "failed",
+                        "timeout",
+                        "cancelled",
+                        "success",
+                    )
+                    for status, month in zip(
+                        statuses,
+                        ("04", "03", "02", "01"),
+                        strict=True,
+                    ):
+                        store.save(
+                            replace(
+                                sample_scan(),
+                                status=status,
+                                error=None if status == "success" else status,
+                                started_at=f"2026-{month}-01T00:00:00Z",
+                                finished_at=f"2026-{month}-01T00:00:01Z",
+                            )
+                        )
+                summary = summarize(path, layout)
+                if layout == "monthly":
+                    self.assertEqual(summary.pop("monthly_files"), 4)
+                    self.assertIsInstance(summary.pop("collection_id"), str)
+                    self.assertTrue(summary.pop("logical_database_bytes"))
+                self.assertEqual(
+                    summary,
+                    {
+                        "available": True,
+                        "successful_scans": 1,
+                        "failed_scans": 3,
+                        "counts_by_status": {
+                            "failed": 1,
+                            "timeout": 1,
+                            "cancelled": 1,
+                            "success": 1,
+                        },
+                        "last_scan_id": 4,
+                        "last_scan_at": "2026-01-01T00:00:01Z",
+                        "last_scan_status": "success",
+                        "last_error_at": "2026-02-01T00:00:01Z",
+                        "last_error": "cancelled",
+                    },
+                )
+
+    def test_monthly_summary_excludes_appends_after_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "monthly"
+            with MonthlyStorage(path) as store:
+                store.save(sample_scan())
+                expected = summarize(path, "monthly")
+                appended = False
+
+                def append_then_read(source: Path) -> sqlite3.Connection:
+                    nonlocal appended
+                    if not appended:
+                        appended = True
+                        store.save(
+                            replace(sample_scan(), status="timeout", error="late")
+                        )
+                    return connect_readonly(source)
+
+                with patch(
+                    "storage.history.connect_readonly", side_effect=append_then_read
+                ):
+                    summary = summarize(path, "monthly")
+                for key in (
+                    "counts_by_status",
+                    "last_scan_id",
+                    "last_error",
+                    "failed_scans",
+                ):
+                    self.assertEqual(summary[key], expected[key])
+                self.assertEqual(summarize(path, "monthly")["failed_scans"], 1)
+
     def test_names_merge_across_addresses_and_months_by_actual_timestamp(self) -> None:
         layouts: tuple[Layout, ...] = ("single", "monthly")
         for layout in layouts:

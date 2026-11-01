@@ -81,9 +81,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         config = load_config(arguments.config)
         if arguments.command == "backup":
-            if config.database_layout == "monthly":
-                return send_backup(config.database_path, layout="monthly")
-            return send_backup(config.database_path)
+            return send_backup(config.database_path, layout=config.database_layout)
         if arguments.command == "history":
             rows = list_ssids(config.database_path, config.database_layout)
             if not rows:

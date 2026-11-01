@@ -14,7 +14,8 @@ from unittest.mock import patch
 import commands
 from config import AppConfig
 from model import Observation
-from storage.database import Storage, read_summary
+from storage.database import Storage
+from storage.history import summarize
 from system.status import show_status, write_status
 from tests.helpers import sample_scan
 
@@ -172,7 +173,7 @@ class ReportingTests(unittest.TestCase):
             path = Path(directory) / "special ?# file.db"
             with Storage(path) as storage:
                 storage.save(sample_scan())
-            self.assertEqual(read_summary(path)["successful_scans"], 1)
+            self.assertEqual(summarize(path)["successful_scans"], 1)
             self.assertTrue(os.path.exists(path))
 
     def test_atomic_status_replacement(self) -> None:

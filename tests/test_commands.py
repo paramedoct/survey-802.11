@@ -81,7 +81,7 @@ class CommandTests(unittest.TestCase):
         ):
             self.assertEqual(commands.main(["backup", "--config", "/custom.toml"]), 7)
             self.assertEqual(str(load.call_args.args[0]), "/custom.toml")
-            backup.assert_called_once_with(AppConfig().database_path)
+            backup.assert_called_once_with(AppConfig().database_path, layout="single")
 
     def test_collect_storage_failure_returns_nonzero(self) -> None:
         output = io.StringIO()

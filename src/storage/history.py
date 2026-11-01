@@ -8,8 +8,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
+from sqlite3 import Connection
 
-from storage.database import Layout, connect_readonly, history_boundary, read_summary
+from storage.database import SCHEMA_VERSION, Layout, connect_readonly, history_boundary
+from storage.metrics import logical_size
 
 
 @contextmanager
@@ -68,53 +70,75 @@ def list_ssids(path: Path, layout: Layout = "single") -> list[SsidSummary]:
     return rows
 
 
+type SummaryRow = tuple[int, str, str]
+
+
+def _scan_summary(
+    reader: Connection, cutoff: int = 2**63 - 1
+) -> tuple[dict[str, int], SummaryRow | None, SummaryRow | None]:
+    # The default includes every SQLite integer primary key.
+    counts = dict(
+        reader.execute(
+            "SELECT status, count(*) FROM scan WHERE id <= ? GROUP BY status", (cutoff,)
+        )
+    )
+    last = reader.execute(
+        "SELECT id, finished_at, status FROM scan WHERE id <= ? "
+        "ORDER BY id DESC LIMIT 1",
+        (cutoff,),
+    ).fetchone()
+    error = reader.execute(
+        "SELECT id, finished_at, error FROM scan WHERE id <= ? "
+        "AND error IS NOT NULL ORDER BY id DESC LIMIT 1",
+        (cutoff,),
+    ).fetchone()
+    return counts, last, error
+
+
+def _summary(
+    counts: dict[str, int], last: SummaryRow | None, error: SummaryRow | None
+) -> dict[str, object]:
+    return {
+        "available": True,
+        "successful_scans": counts.get("success", 0),
+        "failed_scans": sum(
+            counts.get(status, 0) for status in ("failed", "timeout", "cancelled")
+        ),
+        "counts_by_status": counts,
+        "last_scan_id": last[0] if last else None,
+        "last_scan_at": last[1] if last else None,
+        "last_scan_status": last[2] if last else None,
+        "last_error_at": error[1] if error else None,
+        "last_error": error[2] if error else None,
+    }
+
+
 def summarize(path: Path, layout: Layout = "single") -> dict[str, object]:
-    if layout == "single":
-        return read_summary(path)
     if not path.exists():
         return {"available": False}
+    if layout == "single":
+        with closing(connect_readonly(path)) as reader:
+            version = reader.execute("PRAGMA user_version").fetchone()[0]
+            if version != SCHEMA_VERSION:
+                raise RuntimeError(f"unsupported database schema version: {version}")
+            return _summary(*_scan_summary(reader))
     with sources(path, layout) as (paths, cutoff, identity):
         counts: dict[str, int] = {}
-        last: tuple[int, str, str] | None = None
-        error: tuple[int, str, str] | None = None
+        last: SummaryRow | None = None
+        error: SummaryRow | None = None
         logical_bytes = 0
         for source in paths:
             with closing(connect_readonly(source)) as reader:
-                for status, count in reader.execute(
-                    "SELECT status, count(*) FROM scan WHERE id <= ? GROUP BY status",
-                    (cutoff,),
-                ):
+                new_counts, new_last, new_error = _scan_summary(reader, cutoff)
+                for status, count in new_counts.items():
                     counts[status] = counts.get(status, 0) + count
-                candidate = reader.execute(
-                    "SELECT id, finished_at, status FROM scan WHERE id <= ? "
-                    "ORDER BY id DESC LIMIT 1",
-                    (cutoff,),
-                ).fetchone()
-                if candidate is not None and (last is None or candidate[0] > last[0]):
-                    last = candidate
-                candidate = reader.execute(
-                    "SELECT id, finished_at, error FROM scan WHERE id <= ? "
-                    "AND error IS NOT NULL ORDER BY id DESC LIMIT 1",
-                    (cutoff,),
-                ).fetchone()
-                if candidate is not None and (error is None or candidate[0] > error[0]):
-                    error = candidate
-                logical_bytes += (
-                    reader.execute("PRAGMA page_count").fetchone()[0]
-                    * reader.execute("PRAGMA page_size").fetchone()[0]
-                )
+                if new_last is not None and (last is None or new_last[0] > last[0]):
+                    last = new_last
+                if new_error is not None and (error is None or new_error[0] > error[0]):
+                    error = new_error
+                logical_bytes += logical_size(reader)
         return {
-            "available": True,
-            "successful_scans": counts.get("success", 0),
-            "failed_scans": sum(
-                counts.get(status, 0) for status in ("failed", "timeout", "cancelled")
-            ),
-            "counts_by_status": counts,
-            "last_scan_id": last[0] if last else None,
-            "last_scan_at": last[1] if last else None,
-            "last_scan_status": last[2] if last else None,
-            "last_error_at": error[1] if error else None,
-            "last_error": error[2] if error else None,
+            **_summary(counts, last, error),
             "collection_id": identity,
             "logical_database_bytes": logical_bytes,
             "monthly_files": len(paths),

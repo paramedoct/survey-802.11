@@ -12,7 +12,6 @@ from collection.collector import shutdown_signals
 from collection.scanner import IwScanner, run_command
 from config import AppConfig
 from model import ScanError
-from storage.database import read_summary
 from storage.history import summarize
 from system.status import existing_parent
 
@@ -73,11 +72,7 @@ def diagnose(config: AppConfig) -> int:
                 os.access(config.database_path, os.R_OK | os.W_OK),
                 str(config.database_path),
             )
-            summary = (
-                summarize(config.database_path, "monthly")
-                if config.database_layout == "monthly"
-                else read_summary(config.database_path)
-            )
+            summary = summarize(config.database_path, config.database_layout)
             report(
                 "database_schema", bool(summary["available"]), str(config.database_path)
             )

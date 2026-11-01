@@ -9,7 +9,8 @@ from pathlib import Path
 
 from config import AppConfig, ConfigError, load_config
 from model import Observation
-from storage.database import Storage, read_summary
+from storage.database import Storage
+from storage.history import summarize
 from tests.helpers import sample_scan
 
 
@@ -101,7 +102,7 @@ class StorageTests(unittest.TestCase):
                 with self.assertRaisesRegex(
                     RuntimeError, "unsupported database schema"
                 ):
-                    read_summary(path)
+                    summarize(path)
 
     def test_rollback_on_invalid_observation_and_disk_full(self) -> None:
         with (

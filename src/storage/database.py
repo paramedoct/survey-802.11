@@ -164,39 +164,6 @@ def insert_observation(
     )
 
 
-def read_summary(path: Path) -> dict[str, object]:
-    """Read durable history without creating a missing database."""
-    if not path.exists():
-        return {"available": False}
-    with closing(connect_readonly(path)) as connection:
-        version = connection.execute("PRAGMA user_version").fetchone()[0]
-        if version != SCHEMA_VERSION:
-            raise RuntimeError(f"unsupported database schema version: {version}")
-        counts = dict(
-            connection.execute("SELECT status, count(*) FROM scan GROUP BY status")
-        )
-        last = connection.execute(
-            "SELECT id, finished_at, status FROM scan ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-        error = connection.execute(
-            "SELECT finished_at, error FROM scan WHERE error IS NOT NULL "
-            "ORDER BY id DESC LIMIT 1"
-        ).fetchone()
-    return {
-        "available": True,
-        "successful_scans": counts.get("success", 0),
-        "failed_scans": sum(
-            counts.get(status, 0) for status in ("failed", "timeout", "cancelled")
-        ),
-        "counts_by_status": counts,
-        "last_scan_id": last[0] if last else None,
-        "last_scan_at": last[1] if last else None,
-        "last_scan_status": last[2] if last else None,
-        "last_error_at": error[0] if error else None,
-        "last_error": error[1] if error else None,
-    }
-
-
 class Storage:
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -15,7 +15,7 @@ from typing import Protocol
 from collection.scanner import Scanner
 from config import AppConfig
 from model import Observation, Scan, ScanError, ScanStatus
-from storage.database import Storage, open_storage
+from storage.database import MonthlyStorage, Storage, open_storage
 from storage.metrics import StorageMetrics
 from system.status import write_status
 
@@ -151,6 +151,28 @@ class Collector:
             len(scan.observations),
         )
 
+    def _record_storage_metrics(
+        self,
+        storage: Storage | MonthlyStorage,
+        metrics: StorageMetrics | None,
+        scan: Scan,
+        scan_id: int,
+    ) -> None:
+        if isinstance(storage, MonthlyStorage):
+            self.state["storage_metrics"] = dict(storage.metrics)
+            return
+        assert metrics is not None
+        self.state["storage_metrics"] = metrics.record(
+            storage.connection,
+            monotonic_ms=self.clock.monotonic_ms(),
+            observation_count=len(scan.observations),
+            started_at=scan.started_at,
+            scan_id=scan_id,
+            successful_scans=self.successful_scans,
+            failed_scans=self.failed_scans,
+            success=scan.status == "success",
+        )
+
     def run(self) -> None:
         try:
             self._publish()
@@ -182,20 +204,7 @@ class Collector:
                     self._record_scan(scan)
                     scan_id = storage.save(scan)
                     self._record_commit(scan, scan_id)
-                    if isinstance(storage, Storage):
-                        assert metrics is not None
-                        self.state["storage_metrics"] = metrics.record(
-                            storage.connection,
-                            monotonic_ms=self.clock.monotonic_ms(),
-                            observation_count=len(scan.observations),
-                            started_at=scan.started_at,
-                            scan_id=scan_id,
-                            successful_scans=self.successful_scans,
-                            failed_scans=self.failed_scans,
-                            success=scan.status == "success",
-                        )
-                    else:
-                        self.state["storage_metrics"] = dict(storage.metrics)
+                    self._record_storage_metrics(storage, metrics, scan, scan_id)
                     deadline += interval_ms
                     now = self.clock.monotonic_ms()
                     if deadline < now:
