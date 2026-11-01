@@ -14,7 +14,7 @@ from typing import cast
 from config import AppConfig
 from storage.history import summarize
 from storage.metrics import database_identity, logical_size
-from system import control
+from system import service
 
 
 def write_status(path: Path, payload: dict[str, object]) -> None:
@@ -201,7 +201,7 @@ def show_status(config: AppConfig, status_path: Path, as_json: bool) -> int:
     except (OSError, ValueError) as error:
         runtime = {"available": False, "error": str(error)}
     payload: dict[str, dict[str, object]] = {
-        "service": dict(control.service_status()),
+        "service": dict(service.service_status()),
         "runtime": runtime,
         "history": summarize(config.database_path, config.database_layout),
         "storage": _disk_status(config, runtime),

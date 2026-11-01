@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event
 
-from collection.runtime import Collector, shutdown_signals
+from collection.collector import Collector, shutdown_signals
 from config import AppConfig
 from model import Observation, ScanError
 from storage.database import Storage
@@ -115,7 +115,7 @@ class RuntimeTests(unittest.TestCase):
         with simulated_collector(
             [1, 20, 1, 1], ["failed", "timeout", "success", "cancelled"]
         ) as (collector, scanner, root):
-            with self.assertLogs("collection.runtime", level="WARNING"):
+            with self.assertLogs("collection.collector", level="WARNING"):
                 collector.run()
             self.assertEqual(scanner.starts, [0, 60, 120, 180])
             with closing(sqlite3.connect(root / "history.db")) as connection:
@@ -140,7 +140,7 @@ class RuntimeTests(unittest.TestCase):
                     "BEGIN SELECT RAISE(ABORT, 'storage failure'); END"
                 )
             with (
-                self.assertLogs("collection.runtime", level="ERROR"),
+                self.assertLogs("collection.collector", level="ERROR"),
                 self.assertRaises(sqlite3.IntegrityError),
             ):
                 collector.run()
@@ -175,7 +175,7 @@ class RuntimeTests(unittest.TestCase):
                         "BEGIN SELECT RAISE(ABORT, 'storage failure'); END"
                     )
                 with (
-                    self.assertLogs("collection.runtime", level="WARNING"),
+                    self.assertLogs("collection.collector", level="WARNING"),
                     self.assertRaises(sqlite3.IntegrityError),
                 ):
                     collector.run()

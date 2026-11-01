@@ -8,13 +8,13 @@ import tempfile
 from pathlib import Path
 from threading import Event
 
-from collection.runtime import shutdown_signals
+from collection.collector import shutdown_signals
 from collection.scanner import IwScanner, run_command
 from config import AppConfig
 from model import ScanError
 from storage.database import read_summary
 from storage.history import summarize
-from system.reporting import existing_parent
+from system.status import existing_parent
 
 
 def _rfkill_status(device: str) -> tuple[bool, str]:

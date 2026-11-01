@@ -17,7 +17,7 @@ from config import AppConfig
 from model import Observation, Scan, ScanError, ScanStatus
 from storage.database import Storage, open_storage
 from storage.metrics import StorageMetrics
-from system.reporting import write_status
+from system.status import write_status
 
 _LOG = logging.getLogger(__name__)
 

@@ -11,9 +11,9 @@ from config import AppConfig
 from model import Observation
 from storage.database import Storage
 from storage.metrics import StorageMetrics, logical_size
-from system.reporting import _growth_status
+from system.status import _growth_status
 from tests.helpers import sample_scan
-from tests.test_runtime import simulated_collector
+from tests.test_collector import simulated_collector
 
 
 class StorageMetricsTests(unittest.TestCase):
@@ -23,7 +23,7 @@ class StorageMetricsTests(unittest.TestCase):
             _,
             root,
         ):
-            with self.assertLogs("collection.runtime", level="WARNING"):
+            with self.assertLogs("collection.collector", level="WARNING"):
                 collector.run()
             runtime = json.loads((root / "status.json").read_text())
             self.assertEqual(runtime["storage_metrics"]["retained_observations"], 2)

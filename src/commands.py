@@ -10,15 +10,15 @@ from pathlib import Path
 from threading import Event
 from typing import cast
 
-from collection.runtime import Collector, shutdown_signals
+from collection.collector import Collector, shutdown_signals
 from collection.scanner import IwScanner
 from config import DEFAULT_CONFIG, DEFAULT_STATUS, ConfigError, load_config
 from storage.backup import send_backup
 from storage.history import list_ssids
-from system import control
+from system import service
 from system.diagnostics import diagnose
 from system.interface import prepare_interface, restore_interface
-from system.reporting import show_status
+from system.status import show_status
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -75,7 +75,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if arguments.command in {"start", "stop", "restart", "enable", "disable"}:
             if arguments.command in {"start", "restart", "enable"}:
                 load_config(DEFAULT_CONFIG)
-            return control.manage(cast(control.Action, arguments.command))
+            return service.manage(cast(service.Action, arguments.command))
         if arguments.command == "restore-interface":
             restore_interface()
             return 0

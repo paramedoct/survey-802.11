@@ -15,7 +15,7 @@ import commands
 from config import AppConfig
 from model import Observation
 from storage.database import Storage, read_summary
-from system import reporting
+from system.status import show_status, write_status
 from tests.helpers import sample_scan
 
 
@@ -63,16 +63,16 @@ class ReportingTests(unittest.TestCase):
                 with (
                     self.subTest(as_json=as_json),
                     patch(
-                        "system.control.service_status",
+                        "system.service.service_status",
                         return_value=expected["service"],
                     ),
                     patch(
-                        "system.reporting.shutil.disk_usage",
+                        "system.status.shutil.disk_usage",
                         return_value=SimpleNamespace(free=123),
                     ),
                     redirect_stdout(output),
                 ):
-                    result = reporting.show_status(
+                    result = show_status(
                         AppConfig(database_path=database), status, as_json
                     )
                 self.assertEqual(result, 0)
@@ -118,7 +118,7 @@ class ReportingTests(unittest.TestCase):
                 with (
                     patch("commands.load_config", return_value=config),
                     patch(
-                        "system.control.service_status",
+                        "system.service.service_status",
                         return_value={"ActiveState": "active"},
                     ),
                     redirect_stdout(output),
@@ -157,11 +157,11 @@ class ReportingTests(unittest.TestCase):
                 with (
                     redirect_stdout(output),
                     patch(
-                        "system.control.service_status",
+                        "system.service.service_status",
                         return_value={"ActiveState": "inactive"},
                     ),
                 ):
-                    self.assertEqual(reporting.show_status(config, status, True), 0)
+                    self.assertEqual(show_status(config, status, True), 0)
                 payload = json.loads(output.getvalue())
                 self.assertFalse(payload["runtime"]["available"])
                 self.assertFalse(payload["history"]["available"])
@@ -178,11 +178,11 @@ class ReportingTests(unittest.TestCase):
     def test_atomic_status_replacement(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "status.json"
-            reporting.write_status(path, {"counter": 1})
+            write_status(path, {"counter": 1})
             with (
-                patch("system.reporting.os.replace", side_effect=OSError("failure")),
+                patch("system.status.os.replace", side_effect=OSError("failure")),
                 self.assertRaises(OSError),
             ):
-                reporting.write_status(path, {"counter": 2})
+                write_status(path, {"counter": 2})
             self.assertEqual(json.loads(path.read_text()), {"counter": 1})
             self.assertEqual(list(path.parent.iterdir()), [path])

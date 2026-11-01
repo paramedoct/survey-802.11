@@ -11,14 +11,14 @@ from pathlib import Path
 from threading import Event
 from unittest.mock import patch
 
-from collection.runtime import Collector
+from collection.collector import Collector
 from commands import main
 from config import AppConfig, ConfigError, load_config
 from model import Observation
 from storage.backup import send_backup
 from storage.database import MonthlyStorage
 from storage.history import summarize
-from system.reporting import _disk_status
+from system.status import _disk_status
 from tests.helpers import observation_history, sample_scan
 
 

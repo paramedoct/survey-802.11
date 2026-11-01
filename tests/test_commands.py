@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import commands
 from config import AppConfig
-from system import control
+from system import service
 
 
 class CommandTests(unittest.TestCase):
@@ -30,9 +30,9 @@ class CommandTests(unittest.TestCase):
             with (
                 self.subTest(action=action),
                 patch("commands.load_config", return_value=AppConfig()) as load,
-                patch("system.control.os.geteuid", return_value=0),
+                patch("system.service.os.geteuid", return_value=0),
                 patch(
-                    "system.control.subprocess.run",
+                    "system.service.subprocess.run",
                     return_value=subprocess.CompletedProcess([], 0),
                 ) as run,
             ):
@@ -46,18 +46,18 @@ class CommandTests(unittest.TestCase):
                     load.call_count, int(action in {"start", "restart", "enable"})
                 )
         with (
-            patch("system.control.os.geteuid", return_value=1000),
+            patch("system.service.os.geteuid", return_value=1000),
             self.assertRaises(PermissionError),
         ):
-            control.manage("start")
+            service.manage("start")
         with (
-            patch("system.control.os.geteuid", return_value=0),
+            patch("system.service.os.geteuid", return_value=0),
             patch(
-                "system.control.subprocess.run",
+                "system.service.subprocess.run",
                 return_value=subprocess.CompletedProcess([], 7),
             ),
         ):
-            self.assertEqual(control.manage("stop"), 7)
+            self.assertEqual(service.manage("stop"), 7)
 
     def test_interface_hooks_and_restore_without_configuration(self) -> None:
         with (
@@ -98,16 +98,16 @@ class CommandTests(unittest.TestCase):
 
     def test_service_status_unavailable_and_properties(self) -> None:
         with patch(
-            "system.control.subprocess.run", side_effect=FileNotFoundError("missing")
+            "system.service.subprocess.run", side_effect=FileNotFoundError("missing")
         ):
-            self.assertIn("error", control.service_status())
+            self.assertIn("error", service.service_status())
         with patch(
-            "system.control.subprocess.run",
+            "system.service.subprocess.run",
             return_value=subprocess.CompletedProcess(
                 [], 0, "ActiveState=active\nUnitFileState=enabled\n", ""
             ),
         ):
             self.assertEqual(
-                control.service_status(),
+                service.service_status(),
                 {"ActiveState": "active", "UnitFileState": "enabled"},
             )
