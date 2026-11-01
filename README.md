@@ -1,7 +1,5 @@
 ## SURVEY-802.11
-
-- Wireless access point discovery
-- Signal strength measurement
-- Observation archive
-
+- Security parameter measurements
+- Radio parameter measurements
+- Access point discovery ( IEEE 802.11 )
 <br></br>
