@@ -35,10 +35,9 @@ def _parser() -> argparse.ArgumentParser:
     ):
         command = subparsers.add_parser(name)
         command.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    subparsers.choices[
-        "history"
-    ].description = (
-        "List observed SSIDs by latest observation time, newest first (UTC)."
+    subparsers.choices["history"].description = (
+        "List observed SSIDs with detection counts by scan and latest observation "
+        "time, newest first (UTC)."
     )
     subparsers.add_parser("restore-interface")
     for name in ("start", "stop", "restart", "enable", "disable"):
@@ -89,9 +88,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 return 0
             dates = [row.updated_at.isoformat(sep=" ") for row in rows]
             width = max(len("UPDATED AT (UTC)"), *(len(date) for date in dates))
-            print(f"{'UPDATED AT (UTC)':<{width}}  SSID")
+            count_width = max(
+                len("COUNT"), *(len(str(row.detection_count)) for row in rows)
+            )
+            print(f"{'UPDATED AT (UTC)':<{width}}  {'COUNT':>{count_width}}  SSID")
             for row, date in zip(rows, dates, strict=True):
-                print(f"{date:<{width}}  {_ssid_label(row.ssid_bytes)}")
+                print(
+                    f"{date:<{width}}  {row.detection_count:>{count_width}}  "
+                    f"{_ssid_label(row.ssid_bytes)}"
+                )
             return 0
         if arguments.command == "prepare-interface":
             prepare_interface(config.device)

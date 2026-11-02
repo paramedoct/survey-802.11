@@ -35,10 +35,11 @@ def sources(path: Path, layout: Layout) -> Iterator[tuple[list[Path], int, str |
 class SsidSummary:
     ssid_bytes: bytes | None
     updated_at: datetime
+    detection_count: int
 
 
 def list_ssids(path: Path, layout: Layout = "single") -> list[SsidSummary]:
-    """List every distinct raw SSID by its latest observation time in UTC."""
+    """List raw SSIDs with their latest UTC time and number of detecting scans."""
 
     @lru_cache(maxsize=1024)
     def utc_timestamp(value: str) -> str:
@@ -47,13 +48,14 @@ def list_ssids(path: Path, layout: Layout = "single") -> list[SsidSummary]:
             raise ValueError("observation timestamps require a timezone")
         return stamp.astimezone(UTC).isoformat(timespec="microseconds")
 
-    latest: dict[bytes | None, datetime] = {}
+    summaries: dict[bytes | None, SsidSummary] = {}
     with sources(path, layout) as (paths, cutoff, _):
         for source in paths:
             with closing(connect_readonly(source)) as reader:
                 reader.create_function("utc_timestamp", 1, utc_timestamp)
-                for raw, value in reader.execute(
-                    "SELECT n.ssid_bytes, max(utc_timestamp(s.started_at)) "
+                for raw, value, count in reader.execute(
+                    "SELECT n.ssid_bytes, max(utc_timestamp(s.started_at)), "
+                    "count(DISTINCT s.id) "
                     "FROM observation_record r "
                     "JOIN scan s ON s.id = r.scan_id "
                     "JOIN observation_profile p ON p.id = r.profile_id "
@@ -62,9 +64,13 @@ def list_ssids(path: Path, layout: Layout = "single") -> list[SsidSummary]:
                     (cutoff,),
                 ):
                     stamp = datetime.fromisoformat(value)
-                    if raw not in latest or stamp > latest[raw]:
-                        latest[raw] = stamp
-    rows = [SsidSummary(raw, stamp) for raw, stamp in latest.items()]
+                    previous = summaries.get(raw)
+                    summaries[raw] = SsidSummary(
+                        raw,
+                        max(stamp, previous.updated_at) if previous else stamp,
+                        count + (previous.detection_count if previous else 0),
+                    )
+    rows = list(summaries.values())
     rows.sort(key=lambda row: (row.ssid_bytes is not None, row.ssid_bytes or b""))
     rows.sort(key=lambda row: row.updated_at, reverse=True)
     return rows

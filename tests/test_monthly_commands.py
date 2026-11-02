@@ -51,8 +51,11 @@ class MonthlyCommandTests(unittest.TestCase):
                 result = main(["history", "--config", str(config)])
             self.assertEqual(result, 0)
             self.assertIn("UPDATED AT (UTC)", output.getvalue())
+            self.assertIn("COUNT", output.getvalue())
             self.assertIn("2026-10-03 01:00:00+00:00", output.getvalue())
-            self.assertIn("<hex:ff>", output.getvalue())
+            self.assertEqual(
+                output.getvalue().splitlines()[1].split()[2:], ["1", "<hex:ff>"]
+            )
             config.write_text(
                 f'version = 1\n[database]\nlayout = "invalid"\npath = "{root}"\n'
             )

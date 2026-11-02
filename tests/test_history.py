@@ -132,7 +132,19 @@ class HistoryTests(unittest.TestCase):
                 )
                 with open_storage(path, layout) as store:
                     for stamp, observations in (
-                        ("2026-01-01T00:00:00Z", (alpha, beta)),
+                        (
+                            "2026-01-01T00:00:00Z",
+                            (
+                                alpha,
+                                replace(alpha, frequency_mhz=5180),
+                                replace(
+                                    alpha,
+                                    bssid="00:11:22:33:44:55",
+                                    ssid_display="different display",
+                                ),
+                                beta,
+                            ),
+                        ),
                         (
                             "2026-02-01T08:00:00+09:00",
                             (replace(alpha, bssid="00:11:22:33:44:55"),),
@@ -154,6 +166,7 @@ class HistoryTests(unittest.TestCase):
                     )
                 rows = list_ssids(path, layout)
                 self.assertEqual([row.ssid_bytes for row in rows], [b"beta", b"alpha"])
+                self.assertEqual([row.detection_count for row in rows], [2, 3])
                 self.assertEqual(
                     [row.updated_at.isoformat() for row in rows],
                     ["2026-02-01T00:00:00+00:00", "2026-01-31T23:00:00+00:00"],
@@ -182,6 +195,7 @@ class HistoryTests(unittest.TestCase):
                 [row.ssid_bytes for row in rows], [b"z", None, b"", b"\xfe", b"\xff"]
             )
             self.assertEqual(rows[0].updated_at.microsecond, 2)
+            self.assertEqual([row.detection_count for row in rows], [2, 1, 1, 1, 1])
 
     def test_all_names_are_returned_and_empty_collection_is_supported(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -211,6 +225,11 @@ class HistoryTests(unittest.TestCase):
                         appended = True
                         store.save(
                             sample_scan(
+                                Observation("aa:bb:cc:dd:ee:ff", 2412, b"original")
+                            )
+                        )
+                        store.save(
+                            sample_scan(
                                 Observation("aa:bb:cc:dd:ee:ff", 2412, b"later")
                             )
                         )
@@ -221,6 +240,14 @@ class HistoryTests(unittest.TestCase):
                 ):
                     rows = list_ssids(path, "monthly")
             self.assertEqual([row.ssid_bytes for row in rows], [b"original"])
+            self.assertEqual(rows[0].detection_count, 1)
+            self.assertEqual(
+                {
+                    row.ssid_bytes: row.detection_count
+                    for row in list_ssids(path, "monthly")
+                },
+                {b"later": 1, b"original": 2},
+            )
 
     def test_terminal_output_is_readable_and_escapes_controls(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -228,7 +255,7 @@ class HistoryTests(unittest.TestCase):
             config = Path(directory) / "config.toml"
             config.write_text(f'version = 1\n[database]\npath = "{path}"\n')
             with Storage(path) as store:
-                for raw in (b"Cafe", b"line\n\x1b[31m", b"\xff", b"", None):
+                for raw in (b"Cafe",) * 12 + (b"line\n\x1b[31m", b"\xff", b"", None):
                     store.save(sample_scan(Observation("aa:bb:cc:dd:ee:ff", 2412, raw)))
             output = io.StringIO()
             with redirect_stdout(output):
@@ -236,11 +263,16 @@ class HistoryTests(unittest.TestCase):
             lines = output.getvalue().splitlines()
             self.assertEqual(len(lines), 6)
             self.assertIn("UPDATED AT (UTC)", lines[0])
+            self.assertIn("COUNT", lines[0])
             self.assertIn("SSID", lines[0])
             self.assertTrue(
                 all("2026-10-03 01:00:00+00:00" in line for line in lines[1:])
             )
             self.assertTrue(any(line.endswith("  Cafe") for line in lines))
+            for line in lines[1:]:
+                self.assertEqual(
+                    line.split()[2], "12" if line.endswith("  Cafe") else "1"
+                )
             self.assertNotIn('"Cafe"', output.getvalue())
             self.assertIn(r"line\n\x1b[31m", output.getvalue())
             self.assertIn("<hex:ff>", output.getvalue())
@@ -284,3 +316,4 @@ class HistoryTests(unittest.TestCase):
             self.assertEqual(
                 list_ssids(path)[0].updated_at, datetime(2026, 1, 1, tzinfo=UTC)
             )
+            self.assertEqual(list_ssids(path)[0].detection_count, 2)
