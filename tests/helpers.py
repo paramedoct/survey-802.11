@@ -40,7 +40,8 @@ def observation_history(
                     dict(row)
                     for row in reader.execute(
                         "SELECT s.*, o.bssid, o.frequency_mhz, o.ssid_bytes, "
-                        "o.ssid_display, o.signal_dbm, o.channel, o.security_json "
+                        "o.ssid_display, o.signal_dbm, o.channel, o.security_json, "
+                        "o.wifi_generations_json, o.wifi_generation "
                         "FROM scan s LEFT JOIN observation o ON o.scan_id = s.id "
                         "WHERE s.id <= ?",
                         (cutoff,),

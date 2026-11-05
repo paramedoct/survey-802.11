@@ -136,7 +136,9 @@ class MonthlyStorageTests(unittest.TestCase):
             backup = Path(directory) / "backup"
             with MonthlyStorage(root) as store:
                 january = replace(
-                    sample_scan(Observation("aa:bb:cc:dd:ee:ff", 2412)),
+                    sample_scan(
+                        Observation("aa:bb:cc:dd:ee:ff", 2412, wifi_generations=(4, 6))
+                    ),
                     started_at="2026-01-01T00:00:00Z",
                 )
                 february = replace(january, started_at="2026-02-01T00:00:00Z")

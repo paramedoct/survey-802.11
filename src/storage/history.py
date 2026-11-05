@@ -10,7 +10,12 @@ from functools import lru_cache
 from pathlib import Path
 from sqlite3 import Connection
 
-from storage.database import SCHEMA_VERSION, Layout, connect_readonly, history_boundary
+from storage.database import (
+    READABLE_SCHEMA_VERSIONS,
+    Layout,
+    connect_readonly,
+    history_boundary,
+)
 from storage.metrics import logical_size
 
 
@@ -125,7 +130,7 @@ def summarize(path: Path, layout: Layout = "single") -> dict[str, object]:
     if layout == "single":
         with closing(connect_readonly(path)) as reader:
             version = reader.execute("PRAGMA user_version").fetchone()[0]
-            if version != SCHEMA_VERSION:
+            if version not in READABLE_SCHEMA_VERSIONS:
                 raise RuntimeError(f"unsupported database schema version: {version}")
             return _summary(*_scan_summary(reader))
     with sources(path, layout) as (paths, cutoff, identity):

@@ -20,7 +20,8 @@ from model import Observation, Scan
 
 Layout = Literal["single", "monthly"]
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
+READABLE_SCHEMA_VERSIONS = {3, SCHEMA_VERSION}
 _SCHEMA = """
 CREATE TABLE scan (
     id INTEGER PRIMARY KEY,
@@ -42,7 +43,18 @@ CREATE INDEX scan_boot_time ON scan(boot_id, started_monotonic_ms, id);
 
 """
 
-_NORMALIZED_SCHEMA = """
+_WIFI_SCHEMA = """
+CREATE TABLE wifi_info (
+    id INTEGER PRIMARY KEY,
+    wifi_generations_json TEXT NOT NULL COLLATE BINARY UNIQUE
+        CHECK (json_valid(wifi_generations_json)
+               AND json_type(wifi_generations_json) = 'array')
+);
+"""
+
+_NORMALIZED_SCHEMA = (
+    _WIFI_SCHEMA
+    + """
 CREATE TABLE access_point (
     id INTEGER PRIMARY KEY,
     bssid TEXT NOT NULL COLLATE BINARY UNIQUE
@@ -78,19 +90,26 @@ CREATE TABLE observation_record (
     profile_id INTEGER NOT NULL REFERENCES observation_profile(id),
     signal_dbm REAL,
     channel INTEGER,
+    wifi_id INTEGER REFERENCES wifi_info(id),
     PRIMARY KEY (scan_id, ap_id, frequency_mhz)
 );
 CREATE INDEX observation_record_address_time
     ON observation_record(ap_id, scan_id);
+"""
+)
+
+_OBSERVATION_VIEW = """
 CREATE VIEW observation AS
 SELECT r.scan_id, a.bssid, r.frequency_mhz,
        n.ssid_bytes, n.ssid_display, r.signal_dbm, r.channel,
-       q.security_json
+       q.security_json, w.wifi_generations_json,
+       (SELECT max(value) FROM json_each(w.wifi_generations_json)) AS wifi_generation
 FROM observation_record AS r
 JOIN access_point AS a ON a.id = r.ap_id
 JOIN observation_profile AS p ON p.id = r.profile_id
 JOIN network_name AS n ON n.id = p.name_id
-JOIN security_info AS q ON q.id = p.security_id;
+JOIN security_info AS q ON q.id = p.security_id
+LEFT JOIN wifi_info AS w ON w.id = r.wifi_id;
 """
 
 
@@ -98,16 +117,38 @@ def create_normalized_schema(connection: sqlite3.Connection) -> None:
     for statement in _NORMALIZED_SCHEMA.split(";"):
         if statement.strip():
             connection.execute(statement)
+    connection.execute(_OBSERVATION_VIEW)
     for table in (
         "access_point",
         "network_name",
         "security_info",
         "observation_profile",
+        "wifi_info",
     ):
         connection.execute(
             f"CREATE TRIGGER {table}_immutable BEFORE UPDATE ON {table} "
             "BEGIN SELECT RAISE(ABORT, 'immutable dictionary'); END"
         )
+
+
+def upgrade_schema(connection: sqlite3.Connection) -> None:
+    """Upgrade v3 atomically without inferring capabilities for retained history."""
+    with connection:
+        connection.execute("BEGIN IMMEDIATE")
+        for statement in _WIFI_SCHEMA.split(";"):
+            if statement.strip():
+                connection.execute(statement)
+        connection.execute(
+            "CREATE TRIGGER wifi_info_immutable BEFORE UPDATE ON wifi_info "
+            "BEGIN SELECT RAISE(ABORT, 'immutable dictionary'); END"
+        )
+        connection.execute(
+            "ALTER TABLE observation_record ADD COLUMN "
+            "wifi_id INTEGER REFERENCES wifi_info(id)"
+        )
+        connection.execute("DROP VIEW observation")
+        connection.execute(_OBSERVATION_VIEW)
+        connection.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
 def insert_observation(
@@ -156,11 +197,28 @@ def insert_observation(
     profile_id = intern(
         "observation_profile", ("name_id", "security_id"), (name_id, security_id)
     )
+    wifi_id = (
+        intern(
+            "wifi_info",
+            ("wifi_generations_json",),
+            (json.dumps(sorted(set(item.wifi_generations))),),
+        )
+        if item.wifi_generations
+        else None
+    )
     connection.execute(
         "INSERT INTO observation_record "
-        "(scan_id, ap_id, frequency_mhz, profile_id, signal_dbm, channel) "
-        "VALUES (?, ?, ?, ?, ?, ?)",
-        (scan_id, ap_id, item.frequency_mhz, profile_id, item.signal_dbm, item.channel),
+        "(scan_id, ap_id, frequency_mhz, profile_id, signal_dbm, channel, wifi_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?)",
+        (
+            scan_id,
+            ap_id,
+            item.frequency_mhz,
+            profile_id,
+            item.signal_dbm,
+            item.channel,
+            wifi_id,
+        ),
     )
 
 
@@ -178,7 +236,7 @@ class Storage:
             try:
                 self.connection.execute("PRAGMA foreign_keys = ON")
                 version = self.connection.execute("PRAGMA user_version").fetchone()[0]
-                if version not in {0, SCHEMA_VERSION}:
+                if version not in {0, *READABLE_SCHEMA_VERSIONS}:
                     raise RuntimeError(
                         f"unsupported database schema version: {version}"
                     )
@@ -203,7 +261,11 @@ class Storage:
                             if statement.strip():
                                 self.connection.execute(statement)
                         create_normalized_schema(self.connection)
-                        self.connection.execute("PRAGMA user_version = 3")
+                        self.connection.execute(
+                            f"PRAGMA user_version = {SCHEMA_VERSION}"
+                        )
+                elif version == 3:
+                    upgrade_schema(self.connection)
             except BaseException:
                 self.connection.close()
                 raise
@@ -359,7 +421,7 @@ def check_identity(
     connection: sqlite3.Connection, manifest: Manifest, month: str
 ) -> None:
     version = connection.execute("PRAGMA user_version").fetchone()[0]
-    if version != SCHEMA_VERSION:
+    if version not in READABLE_SCHEMA_VERSIONS:
         raise RuntimeError(f"unsupported monthly database schema: {version}")
     try:
         identity = connection.execute(
@@ -427,6 +489,7 @@ class MonthlyStorage:
                 self.manifest = read_manifest(root, allow_unregistered=True)
                 self._recover_empty_files()
                 self._check_global_ids()
+                self._upgrade_months()
                 self.next_id = inventory_high_water(root, self.manifest) + 1
                 self.metrics = self._load_retention()
         except BaseException:
@@ -449,6 +512,15 @@ class MonthlyStorage:
                         raise RuntimeError(
                             "duplicate global scan identifier"
                         ) from error
+
+    def _upgrade_months(self) -> None:
+        for month in self.manifest["months"]:
+            path = self.root / f"{month}.db"
+            with closing(connect_readonly(path)) as reader:
+                version = reader.execute("PRAGMA user_version").fetchone()[0]
+            if version == 3:
+                with Storage(path):
+                    pass
 
     def _load_retention(self) -> dict[str, object]:
         count = 0

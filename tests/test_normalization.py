@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 import tempfile
 import unittest
@@ -32,6 +33,7 @@ def varied_scans() -> list[Scan]:
             ssid_bytes=raw,
             ssid_display=display,
             security_json=security,
+            wifi_generations=(4, 5, 6) if index % 2 else None,
             signal_dbm=-50.125 if index % 2 else None,
             channel=123 if index % 2 else None,
         )
@@ -64,6 +66,10 @@ class NormalizationTests(unittest.TestCase):
                     item.signal_dbm,
                     item.channel,
                     item.security_json,
+                    json.dumps(item.wifi_generations)
+                    if item.wifi_generations
+                    else None,
+                    item.wifi_generation,
                 )
                 for scan_id, scan in enumerate(scans, start=1)
                 for item in scan.observations
@@ -95,6 +101,7 @@ class NormalizationTests(unittest.TestCase):
                     "network_name",
                     "security_info",
                     "observation_profile",
+                    "wifi_info",
                 ):
                     with self.assertRaisesRegex(sqlite3.IntegrityError, "immutable"):
                         storage.connection.execute(f"UPDATE {table} SET id = id")
@@ -120,7 +127,14 @@ class NormalizationTests(unittest.TestCase):
             tempfile.TemporaryDirectory() as directory,
             Storage(Path(directory) / "new.db") as storage,
         ):
-            item = Observation("aa:bb:cc:dd:ee:ff", 2412, b"x", "x", security_json="{}")
+            item = Observation(
+                "aa:bb:cc:dd:ee:ff",
+                2412,
+                b"x",
+                "x",
+                security_json="{}",
+                wifi_generations=(4, 6),
+            )
             for observations in ((replace(item, security_json=""),), (item, item)):
                 with self.assertRaises(sqlite3.IntegrityError):
                     storage.save(sample_scan(*observations))
@@ -131,6 +145,7 @@ class NormalizationTests(unittest.TestCase):
                     "security_info",
                     "observation_profile",
                     "observation_record",
+                    "wifi_info",
                 ):
                     self.assertEqual(
                         storage.connection.execute(

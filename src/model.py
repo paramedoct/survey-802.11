@@ -21,6 +21,12 @@ class Observation:
     signal_dbm: float | None = None
     channel: int | None = None
     security_json: str | None = None
+    wifi_generations: tuple[int, ...] | None = None
+
+    @property
+    def wifi_generation(self) -> int | None:
+        """Highest advertised generation; missing information remains unknown."""
+        return max(self.wifi_generations) if self.wifi_generations else None
 
 
 @dataclass(frozen=True)

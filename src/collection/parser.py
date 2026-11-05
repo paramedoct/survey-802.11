@@ -15,6 +15,10 @@ _BSSID = re.compile(
 )
 _SIGNAL = re.compile(rb"(-?\d+)\.(-?\d+) dBm")
 _SUITES = re.compile(r"(?:FT/)?IEEE 802\.1X(?:/[^ ]+)?|Use group cipher suite|[^ ]+")
+_WIFI_GENERATION = re.compile(
+    rb"^(HT|VHT|HE|EHT) (?:capabilities|operation):", re.IGNORECASE
+)
+_GENERATIONS = {b"HT": 4, b"VHT": 5, b"HE": 6, b"EHT": 7}
 
 
 def channel_for_frequency(frequency: int) -> int | None:
@@ -61,6 +65,7 @@ class _BSS:
     privacy: bool | None = None
     sections: dict[str, dict[str, object]] = field(default_factory=dict)
     section: str | None = None
+    wifi_generations: set[int] = field(default_factory=set)
 
     def observation(self) -> Observation:
         if self.frequency is None:
@@ -76,6 +81,7 @@ class _BSS:
             self.signal_dbm,
             channel_for_frequency(self.frequency),
             json.dumps(security, sort_keys=True) if security else None,
+            tuple(sorted(self.wifi_generations)) or None,
         )
 
     def parse_line(self, line: bytes) -> None:
@@ -112,7 +118,13 @@ class _BSS:
         elif value.startswith(b"capability:"):
             self.privacy = b"Privacy" in value.split()
         else:
-            self._security(line, value)
+            match = _WIFI_GENERATION.match(value)
+            if match:
+                if b"<invalid:" not in value.lower():
+                    self.wifi_generations.add(_GENERATIONS[match[1].upper()])
+                self.section = None
+            else:
+                self._security(line, value)
 
     def _security(self, line: bytes, value: bytes) -> None:
         for name in ("RSN", "WPA", "WPS"):

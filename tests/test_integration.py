@@ -69,6 +69,8 @@ BSS AA:BB:CC:DD:EE:FF(on wlan0)
 \tfreq: 2412
 \tsignal: -45.75 dBm
 \tSSID: \\xff\\x00hidden
+\tHT capabilities:
+\tHE capabilities:
 OUTPUT
 """,
             )
@@ -107,9 +109,10 @@ OUTPUT
                     process.communicate()
             with closing(sqlite3.connect(database)) as connection:
                 rows = connection.execute(
-                    "SELECT ssid_bytes, signal_dbm FROM observation ORDER BY scan_id"
+                    "SELECT ssid_bytes, signal_dbm, wifi_generations_json, "
+                    "wifi_generation FROM observation ORDER BY scan_id"
                 ).fetchall()
-                self.assertEqual(rows, [(b"\xff\x00hidden", -45.75)] * 2)
+                self.assertEqual(rows, [(b"\xff\x00hidden", -45.75, "[4, 6]", 6)] * 2)
                 self.assertEqual(
                     connection.execute("PRAGMA integrity_check").fetchone()[0], "ok"
                 )

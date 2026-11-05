@@ -24,6 +24,66 @@ def bss(
 
 
 class ParserTests(unittest.TestCase):
+    def test_advertised_wifi_generations(self) -> None:
+        for name, generation in ((b"HT", 4), (b"VHT", 5), (b"HE", 6), (b"EHT", 7)):
+            for section in (b"capabilities", b"operation", b"Operation"):
+                with self.subTest(name=name, section=section):
+                    item = parse_scan(bss() + b"\t" + name + b" " + section + b":\n")[0]
+                    self.assertEqual(item.wifi_generations, (generation,))
+                    self.assertEqual(item.wifi_generation, generation)
+
+    def test_generations_are_sorted_deduplicated_and_scoped_to_each_bss(self) -> None:
+        items = parse_scan(
+            bss(frequency=5180)
+            + b"\tHE capabilities:\n\tHT capabilities:\n"
+            + b"\tVHT capabilities:\n\tHE Operation:\n"
+            + bss(frequency=2412)
+            + b"\tHT capabilities:\n"
+            + bss(b"00:11:22:33:44:55", frequency=5955)
+            + b"\tHE capabilities:\n\tEHT capabilities:\n"
+        )
+        self.assertEqual(
+            [item.wifi_generations for item in items], [(4, 5, 6), (4,), (6, 7)]
+        )
+        self.assertEqual([item.wifi_generation for item in items], [6, 4, 7])
+
+    def test_missing_generation_information_stays_unknown(self) -> None:
+        for frequency in (2412, 5180, 5955):
+            with self.subTest(frequency=frequency):
+                item = parse_scan(
+                    bss(ssid=b"Wi-Fi 6 HT capabilities:", frequency=frequency)
+                    + b"\tcapability: ESS Privacy (0x0011)\n"
+                    + b"\tRSN:\t * Version: 1\n"
+                    + b"\t\t * Authentication suites: SAE\n"
+                    + b"\t\t * Capabilities: MFP-required (0x00c0)\n"
+                )[0]
+                self.assertIsNone(item.wifi_generations)
+                self.assertIsNone(item.wifi_generation)
+
+    def test_generation_sections_do_not_leak_into_security(self) -> None:
+        item = parse_scan(
+            bss()
+            + b"\tRSN:\t * Version: 1\n"
+            + b"\t\t * Authentication suites: SAE\n"
+            + b"\tHE capabilities:\n\t\t * unrelated: information\n"
+            + b"\tWPS:\t * Version: 1.0\n"
+        )[0]
+        security = json.loads(item.security_json or "{}")
+        self.assertEqual(
+            security["rsn"], {"version": "1", "authentication_suites": ["SAE"]}
+        )
+        self.assertEqual(security["wps"], {"version": "1.0"})
+        self.assertEqual(item.wifi_generations, (6,))
+
+    def test_invalid_capabilities_do_not_claim_support(self) -> None:
+        item = parse_scan(
+            bss()
+            + b"\tHT capabilities:\n"
+            + b"\tHE capabilities: <invalid: 1 byte: 00>\n"
+            + b"\tEHT Operation: <invalid: no data>\n"
+        )[0]
+        self.assertEqual(item.wifi_generations, (4,))
+
     def test_names_addresses_and_deduplication(self) -> None:
         output = (
             bss()
