@@ -17,6 +17,7 @@ from storage.backup import send_backup
 from storage.history import list_ssids
 from system import service
 from system.diagnostics import diagnose
+from system.indicator import indicate
 from system.interface import prepare_interface, restore_interface
 from system.status import show_status
 
@@ -40,6 +41,8 @@ def _parser() -> argparse.ArgumentParser:
         "time, newest first (UTC)."
     )
     subparsers.add_parser("restore-interface")
+    indicator = subparsers.add_parser("indicate-status")
+    indicator.add_argument("--status-path", type=Path, default=DEFAULT_STATUS)
     for name in ("start", "stop", "restart", "enable", "disable"):
         subparsers.add_parser(name)
     for name in ("collect", "status"):
@@ -77,6 +80,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             return service.manage(cast(service.Action, arguments.command))
         if arguments.command == "restore-interface":
             restore_interface()
+            return 0
+        if arguments.command == "indicate-status":
+            stop = Event()
+            with shutdown_signals(stop):
+                indicate(arguments.status_path, stop)
             return 0
         config = load_config(arguments.config)
         if arguments.command == "backup":
