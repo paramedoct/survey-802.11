@@ -41,6 +41,8 @@ class CommandTests(unittest.TestCase):
                 if action in {"enable", "disable"}:
                     expected.append("--now")
                 expected.append("survey-802.11.service")
+                if action in {"enable", "disable"}:
+                    expected.append(service.INDICATOR_SERVICE_NAME)
                 self.assertEqual(run.call_args.args[0], expected)
                 self.assertEqual(
                     load.call_count, int(action in {"start", "restart", "enable"})

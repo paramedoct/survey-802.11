@@ -65,6 +65,8 @@ fi
             service = destination / "etc/systemd/system/survey-802.11.service"
             command = destination / "usr/local/bin/survey-802.11"
             self.assertTrue(service.exists())
+            indicator = service.with_name("survey-802.11-indicator.service")
+            self.assertTrue(indicator.exists())
             self.assertTrue(command.is_symlink())
             self.assertEqual(
                 installed_config.read_bytes(),
@@ -93,10 +95,17 @@ fi
             self.assertEqual(installed_config.read_text(), "custom configuration\n")
             self.assertIn("systemctl stop survey-802.11.service", log.read_text())
             self.assertIn("systemctl start survey-802.11.service", log.read_text())
+            self.assertIn(
+                "systemctl stop survey-802.11-indicator.service", log.read_text()
+            )
+            self.assertIn(
+                "systemctl start survey-802.11-indicator.service", log.read_text()
+            )
             subprocess.run(
                 ["make", "clean"], env=environment, capture_output=True, check=True
             )
             self.assertFalse(service.exists())
+            self.assertFalse(indicator.exists())
             self.assertFalse(command.is_symlink())
             self.assertFalse((destination / "opt/survey-802.11").exists())
             self.assertEqual(installed_config.read_text(), "custom configuration\n")
@@ -106,6 +115,9 @@ fi
             )
             history = log.read_text()
             self.assertEqual(history.count("apt update"), 2)
+            self.assertIn(
+                "systemctl disable --now survey-802.11-indicator.service", history
+            )
             environment["SURVEY_TEST_APT_FAIL"] = "1"
             result = subprocess.run(
                 ["make"], env=environment, capture_output=True, text=True, check=False
@@ -131,6 +143,19 @@ fi
             "RuntimeDirectoryPreserve=yes",
         ):
             self.assertIn(directive, service)
+        self.assertIn("Wants=survey-802.11-indicator.service", service)
+        self.assertIn("Also=survey-802.11-indicator.service", service)
+        indicator = Path("systemd/survey-802.11-indicator.service").read_text()
+        for directive in (
+            "RestartSec=1",
+            "CapabilityBoundingSet=",
+            "ReadOnlyPaths=/sys",
+            "ReadWritePaths=-/sys/class/leds/ACT -/sys/class/leds/led0",
+            "ProtectKernelTunables=false",
+        ):
+            self.assertIn(directive, indicator)
+        self.assertNotIn("PartOf=", indicator)
+        self.assertNotIn("BindsTo=", indicator)
 
     def test_make_dry_runs_and_invalid_target(self) -> None:
         for target in ([], ["clean"]):

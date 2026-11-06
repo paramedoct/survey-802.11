@@ -5,6 +5,7 @@ import subprocess
 from typing import Literal
 
 SERVICE_NAME = "survey-802.11.service"
+INDICATOR_SERVICE_NAME = "survey-802.11-indicator.service"
 Action = Literal["start", "stop", "restart", "enable", "disable"]
 
 
@@ -14,9 +15,10 @@ def manage(action: Action) -> int:
     arguments = ["systemctl", action]
     if action in {"enable", "disable"}:
         arguments.append("--now")
-    return subprocess.run(
-        [*arguments, SERVICE_NAME], check=False, timeout=30
-    ).returncode
+    arguments.append(SERVICE_NAME)
+    if action in {"enable", "disable"}:
+        arguments.append(INDICATOR_SERVICE_NAME)
+    return subprocess.run(arguments, check=False, timeout=30).returncode
 
 
 def service_status() -> dict[str, str]:

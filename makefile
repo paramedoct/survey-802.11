@@ -23,6 +23,11 @@ all:
 	  was_active=true
 	  systemctl stop survey-802.11.service
 	fi
+	indicator_was_active=false
+	if systemctl is-active --quiet survey-802.11-indicator.service; then
+	  indicator_was_active=true
+	  systemctl stop survey-802.11-indicator.service
+	fi
 	install -d -m 0755 "$(DESTDIR)/opt/survey-802.11" \
 	  "$(DESTDIR)/etc/survey-802.11" "$(DESTDIR)/etc/systemd/system" \
 	  "$(DESTDIR)/usr/local/bin"
@@ -38,7 +43,12 @@ all:
 	fi
 	install -m 0644 "$(ROOT_DIR)/systemd/survey-802.11.service" \
 	  "$(DESTDIR)/etc/systemd/system/survey-802.11.service"
+	install -m 0644 "$(ROOT_DIR)/systemd/survey-802.11-indicator.service" \
+	  "$(DESTDIR)/etc/systemd/system/survey-802.11-indicator.service"
 	systemctl daemon-reload
+	if [ "$$indicator_was_active" = true ]; then
+	  systemctl start survey-802.11-indicator.service
+	fi
 	if [ "$$was_active" = true ]; then
 	  systemctl start survey-802.11.service
 	fi
@@ -55,7 +65,11 @@ clean:
 	if [ -e "$(DESTDIR)/etc/systemd/system/survey-802.11.service" ]; then
 	  systemctl disable --now survey-802.11.service
 	fi
+	if [ -e "$(DESTDIR)/etc/systemd/system/survey-802.11-indicator.service" ]; then
+	  systemctl disable --now survey-802.11-indicator.service
+	fi
 	rm -f "$(DESTDIR)/etc/systemd/system/survey-802.11.service" \
+	  "$(DESTDIR)/etc/systemd/system/survey-802.11-indicator.service" \
 	  "$(DESTDIR)/usr/local/bin/survey-802.11"
 	rm -rf "$(DESTDIR)/opt/survey-802.11"
 	systemctl daemon-reload
