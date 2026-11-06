@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import signal
 import sqlite3
 import tempfile
@@ -10,6 +11,7 @@ from contextlib import closing, contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event
+from unittest.mock import patch
 
 from collection.collector import Collector, shutdown_signals
 from config import AppConfig
@@ -81,6 +83,21 @@ def simulated_collector(
 
 
 class RuntimeTests(unittest.TestCase):
+    def test_indicator_result_tracks_committed_outcome(self) -> None:
+        for outcome in ("success", "failed", "timeout"):
+            with (
+                self.subTest(outcome=outcome),
+                patch.dict(os.environ, INVOCATION_ID="current-run"),
+                simulated_collector([1], [outcome]) as (collector, _, root),
+                self.assertLogs("collection.collector", level="INFO"),
+            ):
+                collector.run()
+                state = json.loads((root / "status.json").read_text())
+                self.assertEqual(state["invocation_id"], "current-run")
+                self.assertEqual(state["last_result_success"], outcome == "success")
+                self.assertEqual(state["last_result_monotonic_ms"], 1000)
+                self.assertEqual(state["stale_after_ms"], 180000)
+
     def test_immediate_scan_fixed_period_and_skips(self) -> None:
         with simulated_collector([5, 130, 2], ["success"] * 3) as (
             collector,
@@ -151,6 +168,8 @@ class RuntimeTests(unittest.TestCase):
             self.assertEqual(state["last_scan_status"], "success")
             self.assertIsNone(state["last_commit_at"])
             self.assertIsNone(state["last_scan_id"])
+            self.assertIsNone(state["last_result_success"])
+            self.assertIsNone(state["last_result_monotonic_ms"])
             self.assertEqual(state["successful_scans"], 0)
             self.assertEqual(state["failed_scans"], 0)
             with closing(sqlite3.connect(root / "history.db")) as connection:

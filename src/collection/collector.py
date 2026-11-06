@@ -83,6 +83,10 @@ class Collector:
         self.state: dict[str, object] = {
             "pid": os.getpid(),
             "boot_id": self.boot_id,
+            "invocation_id": os.environ.get("INVOCATION_ID"),
+            "last_result_success": None,
+            "last_result_monotonic_ms": None,
+            "stale_after_ms": max(180, config.interval_s * 2 + config.timeout_s) * 1000,
             "database_path": str(config.database_path),
             "database_layout": config.database_layout,
             "device": config.device,
@@ -137,6 +141,8 @@ class Collector:
     def _record_commit(self, scan: Scan, scan_id: int) -> None:
         self.state["last_scan_id"] = scan_id
         self.state["last_commit_at"] = self.clock.timestamp()
+        self.state["last_result_success"] = scan.status == "success"
+        self.state["last_result_monotonic_ms"] = self.clock.monotonic_ms()
         if scan.status == "success":
             self.successful_scans += 1
         else:
