@@ -7,7 +7,8 @@ import sqlite3
 import tempfile
 import unittest
 from collections.abc import Iterator
-from contextlib import closing, contextmanager
+from contextlib import ExitStack, closing, contextmanager
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from threading import Event
@@ -15,8 +16,8 @@ from unittest.mock import patch
 
 from collection.collector import Collector, shutdown_signals
 from config import AppConfig
-from model import Observation, ScanError
-from storage.database import Storage
+from model import Observation, Scan, ScanError
+from storage.database import Layout, Storage
 
 
 class FakeClock:
@@ -176,6 +177,162 @@ class RuntimeTests(unittest.TestCase):
                 self.assertEqual(
                     connection.execute("SELECT count(*) FROM scan").fetchone()[0], 0
                 )
+
+    def test_write_contention_skips_scans_and_recovers_without_restart(self) -> None:
+        original_save = Storage.save
+        layouts: tuple[Layout, ...] = ("single", "monthly")
+        for layout in layouts:
+            with (
+                self.subTest(layout=layout),
+                simulated_collector([1] * 4, ["success"] * 4) as (
+                    collector,
+                    scanner,
+                    root,
+                ),
+                ExitStack() as resources,
+            ):
+                if layout == "monthly":
+                    collector.config = replace(
+                        collector.config,
+                        database_path=root / "monthly",
+                        database_layout=layout,
+                    )
+                    database = root / "monthly" / "2026-01.db"
+                else:
+                    database = root / "history.db"
+                blocker: sqlite3.Connection | None = None
+
+                def save(
+                    storage: Storage,
+                    scan: Scan,
+                    *,
+                    scan_id: int | None = None,
+                    database_path: Path = database,
+                ) -> int:
+                    nonlocal blocker
+                    storage.connection.execute("PRAGMA busy_timeout = 0")
+                    if scan.started_monotonic_ms == 60_000:
+                        blocker = resources.enter_context(
+                            closing(sqlite3.connect(database_path))
+                        )
+                        blocker.execute("BEGIN IMMEDIATE")
+                    elif scan.started_monotonic_ms in (120_000, 180_000):
+                        state = json.loads((root / "status.json").read_text())
+                        self.assertTrue(state["running"])
+                        self.assertEqual(state["last_scan_id"], 1)
+                        self.assertEqual(
+                            state["last_commit_at"], "2026-01-01T00:00:01+00:00"
+                        )
+                        self.assertEqual(state["successful_scans"], 1)
+                        self.assertEqual(state["failed_scans"], 0)
+                        self.assertEqual(
+                            state["storage_metrics"]["retained_observations"], 1
+                        )
+                        self.assertIn("locked", state["last_error"])
+                        if scan.started_monotonic_ms == 180_000:
+                            assert blocker is not None
+                            blocker.rollback()
+                    return original_save(storage, scan, scan_id=scan_id)
+
+                with (
+                    patch.object(Storage, "save", new=save),
+                    self.assertLogs("collection.collector", level="WARNING") as logs,
+                ):
+                    collector.run()
+                self.assertEqual(len(logs.records), 2)
+                self.assertEqual(scanner.starts, [0, 60, 120, 180])
+                with closing(sqlite3.connect(database)) as connection:
+                    self.assertEqual(
+                        connection.execute(
+                            "SELECT id, started_monotonic_ms FROM scan ORDER BY id"
+                        ).fetchall(),
+                        [(1, 0), (2, 180_000)],
+                    )
+                    self.assertEqual(
+                        connection.execute(
+                            "SELECT count(*) FROM observation"
+                        ).fetchone(),
+                        (2,),
+                    )
+                state = json.loads((root / "status.json").read_text())
+                self.assertFalse(state["running"])
+                self.assertEqual(state["last_scan_id"], 2)
+                self.assertEqual(state["successful_scans"], 2)
+                self.assertEqual(state["skipped_periods"], 0)
+                self.assertEqual(state["storage_metrics"]["retained_observations"], 2)
+
+    def test_extended_busy_error_preserves_schedule_and_uncommitted_status(
+        self,
+    ) -> None:
+        with simulated_collector([1, 1], ["success"] * 2) as (
+            collector,
+            scanner,
+            root,
+        ):
+            original_save = Storage.save
+            error = sqlite3.OperationalError("database is locked")
+            error.sqlite_errorcode = sqlite3.SQLITE_BUSY_SNAPSHOT
+
+            def save(
+                storage: Storage, scan: Scan, *, scan_id: int | None = None
+            ) -> int:
+                if scan.started_monotonic_ms == 0:
+                    scanner.clock.now += 130_000
+                    raise error
+                state = json.loads((root / "status.json").read_text())
+                self.assertTrue(state["running"])
+                for key in (
+                    "last_scan_id",
+                    "last_commit_at",
+                    "last_result_success",
+                    "last_result_monotonic_ms",
+                ):
+                    self.assertIsNone(state[key])
+                self.assertEqual(state["successful_scans"], 0)
+                self.assertEqual(state["failed_scans"], 0)
+                return original_save(storage, scan, scan_id=scan_id)
+
+            with (
+                patch.object(Storage, "save", new=save),
+                self.assertLogs("collection.collector", level="WARNING"),
+            ):
+                collector.run()
+            self.assertEqual(scanner.starts, [0, 180])
+            state = json.loads((root / "status.json").read_text())
+            self.assertEqual(state["skipped_periods"], 2)
+            self.assertEqual(state["successful_scans"], 1)
+            self.assertEqual(state["last_scan_id"], 1)
+
+    def test_other_operational_errors_remain_fatal(self) -> None:
+        for code in (
+            sqlite3.SQLITE_FULL,
+            sqlite3.SQLITE_IOERR,
+            sqlite3.SQLITE_READONLY,
+            sqlite3.SQLITE_LOCKED,
+            None,
+        ):
+            with (
+                self.subTest(code=code),
+                simulated_collector([1, 1], ["success"] * 2) as (
+                    collector,
+                    scanner,
+                    root,
+                ),
+            ):
+                error = sqlite3.OperationalError("database is locked")
+                if code is not None:
+                    error.sqlite_errorcode = code
+                with (
+                    patch.object(Storage, "save", side_effect=error),
+                    self.assertLogs("collection.collector", level="ERROR"),
+                    self.assertRaises(sqlite3.OperationalError) as raised,
+                ):
+                    collector.run()
+                self.assertIs(raised.exception, error)
+                self.assertEqual(scanner.starts, [0])
+                state = json.loads((root / "status.json").read_text())
+                self.assertFalse(state["running"])
+                self.assertIsNone(state["last_commit_at"])
 
     def test_later_storage_error_preserves_previous_commit(self) -> None:
         for outcome in ("success", "failed", "timeout", "cancelled"):

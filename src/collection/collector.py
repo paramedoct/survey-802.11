@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import signal
+import sqlite3
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -208,9 +209,23 @@ class Collector:
                         break
                     scan = self._scan()
                     self._record_scan(scan)
-                    scan_id = storage.save(scan)
-                    self._record_commit(scan, scan_id)
-                    self._record_storage_metrics(storage, metrics, scan, scan_id)
+                    try:
+                        scan_id = storage.save(scan)
+                    except sqlite3.OperationalError as error:
+                        # Extended result codes retain the primary code in the low byte.
+                        if (
+                            getattr(error, "sqlite_errorcode", 0) & 0xFF
+                            != sqlite3.SQLITE_BUSY
+                        ):
+                            raise
+                        self.state["last_error"] = str(error)
+                        self.state["last_error_at"] = self.clock.timestamp()
+                        _LOG.warning(
+                            "skipping scan after database contention: %s", error
+                        )
+                    else:
+                        self._record_commit(scan, scan_id)
+                        self._record_storage_metrics(storage, metrics, scan, scan_id)
                     deadline += interval_ms
                     now = self.clock.monotonic_ms()
                     if deadline < now:
